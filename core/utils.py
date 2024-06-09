@@ -113,7 +113,7 @@ def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) ->
 
 
 
-def save_videos_to_db(videos_info, db_path='yt_info.db'):
+def save_videos_to_db(videos_info, db_path='sql/yt_info.db'):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     
@@ -144,7 +144,7 @@ def save_videos_to_db(videos_info, db_path='yt_info.db'):
     for video in videos_info:
         c.execute('''
         INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
-                            playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date
+                            playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
                             has_subtitles, has_generated_article, has_uploaded_article)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -163,7 +163,10 @@ def save_videos_to_db(videos_info, db_path='yt_info.db'):
             video.get('playlist_uploader_id', ''),
             video.get('n_entries', None),
             video.get('duration_string', ''),
-            video.get('upload_date', '')  # 確保有上传日期
+            video.get('upload_date', ''),  # 確保有上传日期
+            'No',  # has_subtitles
+            'No',  # has_generated_article
+            'No'   # has_uploaded_article
         ))
 
     conn.commit()
@@ -203,25 +206,25 @@ def save_videos_to_csv(videos_info, csv_path='yt_videos.csv'):
 
 
 # 示例用法
-import csv
-channel_url = 'https://www.youtube.com/@benhsu501'
-channel_url = 'https://www.youtube.com/@bumpbro'
-channel_url = 'https://www.youtube.com/@DanLok'
-videos_info = fetch_youtube_playlist(channel_url)
-existing_ids = fetch_existing_ids('yt_info.db')
-new_videos, existing_videos = classify_videos(videos_info, existing_ids)
+#import csv
+#channel_url = 'https://www.youtube.com/@benhsu501'
+#channel_url = 'https://www.youtube.com/@bumpbro'
+#channel_url = 'https://www.youtube.com/@DanLok'
+#videos_info = fetch_youtube_playlist(channel_url)
+#existing_ids = fetch_existing_ids('yt_info.db')
+#new_videos, existing_videos = classify_videos(videos_info, existing_ids)
 
-print("新的影片資料：")
-for video in new_videos:
-    print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
+# print("新的影片資料：")
+# for video in new_videos:
+#     print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
 
-# 列印已存在的影片資料：只列印 ID 和標題
-print("已存在的影片資料：")
-for video in existing_videos:
-    print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
+## 列印已存在的影片資料：只列印 ID 和標題
+# print("已存在的影片資料：")
+# for video in existing_videos:
+#     print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
 
 
-#print(videos_info)
+# print(videos_info)
 # save_videos_to_csv(videos_info, csv_path = "/dir/test/yt_videos.csv")
 # 使用新函式保存到 CSV
-save_videos_to_db(videos_info)
+# save_videos_to_db(videos_info)
