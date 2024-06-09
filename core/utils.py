@@ -48,7 +48,7 @@ def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
                 print("Error decoding JSON from line:", line)
     return videos_info
 
-def fetch_existing_ids(db_path='sql/yt_info.db') -> Set[str]:
+def fetch_existing_ids(db_path: str = 'sql/yt_info.db') -> Set[str]:
     """
     Retrieves a set of existing video IDs from the database.
 
@@ -204,6 +204,75 @@ def save_videos_to_csv(videos_info, csv_path='yt_videos.csv'):
             writer.writerow(row)
 
 
+    
+
+def check_db_subtitles_info(db_path: str = 'sql/yt_info.db') -> Set[str]:
+    """
+    
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM videos WHERE has_subtitles='No'")
+    waitting_downlaod_ids = {row[0] for row in cursor.fetchall()}
+
+    conn.close()
+                   
+    return waitting_downlaod_ids
+
+
+def check_and_download_subtitles(video_id: Set[str], output_dir:str ='subtitles', log_path='yt_dlp_logs.txt'):
+    # 檢查可用的字幕
+
+    for id in video_id:
+        list_command = [
+            'yt-dlp',
+            '--list-subs',
+            f'https://www.youtube.com/watch?v={video_id}'
+        ]
+
+        # 執行命令並獲取輸出
+        list_result = subprocess.run(list_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # 開啟日誌文件
+        with open(log_path, 'a') as log_file:
+            log_file.write(f"Checking subtitles for video ID {video_id}\n")
+            log_file.write("List Subtitles Output:\n")
+            log_file.write(list_result.stdout)
+            log_file.write("\nList Subtitles Errors:\n")
+            log_file.write(list_result.stderr)
+        
+            if list_result.returncode != 0:
+                log_file.write(f"Error listing subtitles for video ID {video_id}\n")
+                return
+
+            # 檢查輸出中是否包含 'en'（代表英語字幕）
+            if 'en (auto-generated)' in list_result.stdout or 'en' in list_result.stdout:
+                # 下載英語字幕
+                download_command = [
+                    'yt-dlp',
+                    '--write-sub',
+                    '--sub-langs', 'en',  # 指定下載英語字幕
+                    '--skip-download',   # 只下載字幕，不下載影片
+                    '-o', f'{output_dir}/%(id)s.%(ext)s',
+                    f'https://www.youtube.com/watch?v={video_id}'
+                ]
+
+                # 執行下載命令
+                download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+                # 寫入下載結果到日誌文件
+                log_file.write("Download Subtitles Output:\n")
+                log_file.write(download_result.stdout)
+                log_file.write("\nDownload Subtitles Errors:\n")
+                log_file.write(download_result.stderr)
+
+                if download_result.returncode == 0:
+                    log_file.write("英語字幕下載成功\n")
+                else:
+                    log_file.write("下載字幕過程中發生錯誤\n")
+            else:
+                log_file.write("該影片沒有可用的英語字幕\n")
 
 # 示例用法
 #import csv

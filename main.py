@@ -1,9 +1,9 @@
 import argparse
-from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db
+from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db, check_db_subtitles_info
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
-    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "advanced"], help="Select the mode of operation.")
+    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle"], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
 
     args = parser.parse_args()
@@ -31,7 +31,11 @@ def main():
 
         save_videos_to_db(videos_info)
 
+    if args.mode == "download_subtitle":
+        print
+        result = check_db_subtitles_info()
 
+        print(result)
 
 if __name__ == "__main__":
     main()
