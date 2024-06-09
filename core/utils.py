@@ -3,7 +3,7 @@ import json
 import subprocess
 from typing import List, Dict, Any, Set, Tuple
 
-def fetch_youtube_videos(playlist_url: str) -> List[Dict[str, Any]]:
+def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
     """
     Fetches a list of videos from a YouTube playlist using the `yt-dlp` tool.
 
@@ -25,7 +25,7 @@ def fetch_youtube_videos(playlist_url: str) -> List[Dict[str, Any]]:
         json.JSONDecodeError: If parsing JSON fails.
 
     Example:
-        >>> fetch_youtube_videos("https://www.youtube.com/@benhsu501")
+        >>> fetch_youtube_playlist("https://www.youtube.com/@benhsu501")
         [{'title': 'Example Video', 'url': 'https://youtube.com/example', ...}, ...]
 
     """
@@ -207,7 +207,7 @@ import csv
 channel_url = 'https://www.youtube.com/@benhsu501'
 channel_url = 'https://www.youtube.com/@bumpbro'
 channel_url = 'https://www.youtube.com/@DanLok'
-videos_info = fetch_youtube_videos(channel_url)
+videos_info = fetch_youtube_playlist(channel_url)
 existing_ids = fetch_existing_ids('yt_info.db')
 new_videos, existing_videos = classify_videos(videos_info, existing_ids)
 
