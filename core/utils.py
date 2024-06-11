@@ -221,10 +221,12 @@ def check_db_subtitles_info(db_path: str = 'sql/yt_info.db') -> Set[str]:
     return waitting_downlaod_ids
 
 
-def check_and_download_subtitles(video_id: Set[str], output_dir:str ='subtitles', log_path='yt_dlp_logs.txt'):
+def check_and_download_subtitles(video_ids: Set[str], output_dir:str ='subtitles', log_path='yt_dlp_logs.txt'):
     # 檢查可用的字幕
+    if len(video_ids) == 0:
+        return "All subtitles of videos have been downloaded."
 
-    for id in video_id:
+    for video_id in video_ids:
         list_command = [
             'yt-dlp',
             '--list-subs',
@@ -234,45 +236,78 @@ def check_and_download_subtitles(video_id: Set[str], output_dir:str ='subtitles'
         # 執行命令並獲取輸出
         list_result = subprocess.run(list_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # 開啟日誌文件
-        with open(log_path, 'a') as log_file:
-            log_file.write(f"Checking subtitles for video ID {video_id}\n")
-            log_file.write("List Subtitles Output:\n")
-            log_file.write(list_result.stdout)
-            log_file.write("\nList Subtitles Errors:\n")
-            log_file.write(list_result.stderr)
-        
-            if list_result.returncode != 0:
-                log_file.write(f"Error listing subtitles for video ID {video_id}\n")
-                return
+        # 檢查輸出中是否包含 'en'（代表英語字幕）
+        if 'en (auto-generated)' in list_result.stdout or 'en' in list_result.stdout:
+            # 下載英語字幕
+            download_command = [
+                'yt-dlp',
+                '--write-sub',
+                '--sub-langs', 'en',  # 指定下載英語字幕
+                '--skip-download',   # 只下載字幕，不下載影片
+                '-o', f'{output_dir}/%(ㄎㄛ).%(ext)s',
+                f'https://www.youtube.com/watch?v={video_id}'
+            ]
 
-            # 檢查輸出中是否包含 'en'（代表英語字幕）
-            if 'en (auto-generated)' in list_result.stdout or 'en' in list_result.stdout:
-                # 下載英語字幕
-                download_command = [
-                    'yt-dlp',
-                    '--write-sub',
-                    '--sub-langs', 'en',  # 指定下載英語字幕
-                    '--skip-download',   # 只下載字幕，不下載影片
-                    '-o', f'{output_dir}/%(id)s.%(ext)s',
-                    f'https://www.youtube.com/watch?v={video_id}'
-                ]
-
-                # 執行下載命令
-                download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
+            # 執行下載命令
+            download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            print(video_id, "")
                 # 寫入下載結果到日誌文件
-                log_file.write("Download Subtitles Output:\n")
-                log_file.write(download_result.stdout)
-                log_file.write("\nDownload Subtitles Errors:\n")
-                log_file.write(download_result.stderr)
 
-                if download_result.returncode == 0:
-                    log_file.write("英語字幕下載成功\n")
-                else:
-                    log_file.write("下載字幕過程中發生錯誤\n")
+            if download_result.returncode == 0:
+                #log_file.write("英語字幕下載成功\n")
+                # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'Yes')
+                print(video_id, "英語字幕下載成功\n")
             else:
-                log_file.write("該影片沒有可用的英語字幕\n")
+                # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'Error')
+                print(video_id, "英語字幕下載失敗\n")
+        else:
+            # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'No_en')
+            print(video_id, "該影片沒有可用的英語字幕")
+
+
+
+import sqlite3
+
+def db_change_value(id: str, col_name: str, value: str, db_path: str = 'sql/yt_info.db'):
+    """
+    Changes a specific value in the database for a given video ID.
+
+    This function updates a specific column for a single row in the SQLite database,
+    identified by the video ID. It allows for dynamically setting the column and value.
+
+    Args:
+        id (str): The ID of the video whose data needs to be updated.
+        col_name (str): The name of the column in the database to update.
+        value (str): The new value to set in the specified column.
+        db_path (str): The path to the SQLite database file. Defaults to 'sql/yt_info.db'.
+
+    Raises:
+        ValueError: If the column name provided does not exist in the database.
+        sqlite3.Error: If an error occurs during the database operation.
+
+    Example:
+        >>> db_change_value('video123', 'title', 'New Video Title')
+        # This will update the 'title' column for the video with ID 'video123' to 'New Video Title'.
+    """
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Prepare the SQL statement
+        sql = f"UPDATE videos SET {col_name} = ? WHERE id = ?"
+        # Execute the SQL statement
+        cursor.execute(sql, (value, id))
+        # Commit the changes
+        conn.commit()
+        print("Database updated successfully.")
+    except sqlite3.Error as e:
+        print(f"An error occurred: {e}")
+        raise
+    finally:
+        # Ensure that the connection is closed
+        conn.close()
+
 
 # 示例用法
 #import csv

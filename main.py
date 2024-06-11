@@ -1,5 +1,5 @@
 import argparse
-from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db, check_db_subtitles_info
+from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db, check_db_subtitles_info, db_change_value, check_and_download_subtitles
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
@@ -32,10 +32,11 @@ def main():
         save_videos_to_db(videos_info)
 
     if args.mode == "download_subtitle":
-        print
-        result = check_db_subtitles_info()
+        
+        video_ids = check_db_subtitles_info()
+        print(video_ids)
+        check_and_download_subtitles(video_ids)
 
-        print(result)
 
 if __name__ == "__main__":
     main()
