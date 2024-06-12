@@ -1,5 +1,5 @@
 import argparse
-from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db, check_db_subtitles_info, db_change_value, check_and_download_subtitles
+from core.utils import fetch_youtube_playlist, fetch_existing_ids, classify_videos, save_videos_to_db, check_db_subtitles_info, db_change_value, SubtitleDownloader
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
@@ -34,9 +34,15 @@ def main():
     if args.mode == "download_subtitle":
         
         video_ids = check_db_subtitles_info()
-        print(video_ids)
-        check_and_download_subtitles(video_ids)
-
+        downloader = SubtitleDownloader()
+        #downloader.check_and_download_subtitles(['HjgerWSDoXE'], 0)       
+        downloader.check_and_download_subtitles(video_ids, 0) 
 
 if __name__ == "__main__":
     main()
+
+## example check 
+## yt-dlp --list-subs https://www.youtube.com/watch?v=HjgerWSDoXE
+
+## example download 
+## yt-dlp --write-sub  --sub-langs en --skip-download -o subtitles/%(id)s.%(ext)s https://www.youtube.com/watch?v=HjgerWSDoXE
