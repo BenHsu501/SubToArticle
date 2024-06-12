@@ -113,7 +113,7 @@ def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) ->
 
 
 
-def save_videos_to_db(videos_info, db_path='sql/yt_info.db'):
+def save_videos_to_db(videos_info, db_path:str = 'sql/yt_info.db'):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     
@@ -221,48 +221,86 @@ def check_db_subtitles_info(db_path: str = 'sql/yt_info.db') -> Set[str]:
     return waitting_downlaod_ids
 
 
-def check_and_download_subtitles(video_ids: Set[str], output_dir:str ='subtitles', log_path='yt_dlp_logs.txt'):
-    # 檢查可用的字幕
-    if len(video_ids) == 0:
-        return "All subtitles of videos have been downloaded."
+class SubtitleDownloader:
+    def __init__(self, output_dir:str = 'subtitles', priority_langs:List[str] = ['en', 'zh-TW', 'zh', 'es']) -> None:
+        self.output_dir = output_dir
+        self.priority_langs = priority_langs
 
-    for video_id in video_ids:
+        now_tinme = '{:%y%m%d_%H%M%S%}'.format(datetime.now())
+        self.log_path = f'{self.output_dir}/{now_tinme}_yt_dlp_logs.txt'
+
+    def check_and_download_subtitles(self, video_ids):
+        # 依據每一個函數使用
+        for video_id in video_ids:
+            # check subtilte
+            manual_subs = self.check_subtitle_available(video_id)
+            # select_subtitle_lag
+            download_lang = None
+            if not manual_subs is None:
+                download_lang = self.select_subtitle_lag(manual_subs)
+            else:
+                break
+
+            # 字幕下載
+            if download_lang:
+                download_result = self.downlaod_subtitle(download_lang = download_lang, video_id = video_id)
+                if download_result.returncode == 0:
+                    self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
+                else:
+                    self.write_log(video_id, "An error occurred while downloading subtitles.\n")
+            else:
+                self.write_log(video_id, "No suitable subtitles were found.\n")
+
+
+    def select_subtitle_lag(self, subtitles:List[str]):
+        download_lang = None
+        # 依據優先序選擇下載語言
+        for lang in self.priority_langs:
+            if any(lang == sub[0] for sub in subtitles):
+                download_lang = lang
+                break
+        # 如果有除了 priority 的語言，就使用第一個
+        if download_lang is None: 
+            download_lang = subtitles[0]    
+        return download_lang
+
+    def check_subtitle_available(self, video_id:str):
         list_command = [
             'yt-dlp',
             '--list-subs',
             f'https://www.youtube.com/watch?v={video_id}'
         ]
-
-        # 執行命令並獲取輸出
         list_result = subprocess.run(list_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        # writing log
+        log_message = f"Checking subtitles for video ID {video_id}\nList Subtitles Output:\n{list_result.stdout}\nList Subtitles Errors:\n{list_result.stderr}\n"
+        self.write_log(video_id, log_message)
+        if list_result.returncode != 0:
+            self.write_log(video_id, f"Error listing subtitles for video ID {video_id}\n")
+            return
+        
+         # Regex to find available subtitles
+        list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
+        manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[1], re.MULTILINE)
+        return manual_subs
 
-        # 檢查輸出中是否包含 'en'（代表英語字幕）
-        if 'en (auto-generated)' in list_result.stdout or 'en' in list_result.stdout:
-            # 下載英語字幕
-            download_command = [
-                'yt-dlp',
-                '--write-sub',
-                '--sub-langs', 'en',  # 指定下載英語字幕
-                '--skip-download',   # 只下載字幕，不下載影片
-                '-o', f'{output_dir}/%(ㄎㄛ).%(ext)s',
-                f'https://www.youtube.com/watch?v={video_id}'
-            ]
-
-            # 執行下載命令
-            download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            print(video_id, "")
-                # 寫入下載結果到日誌文件
-
-            if download_result.returncode == 0:
-                #log_file.write("英語字幕下載成功\n")
-                # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'Yes')
-                print(video_id, "英語字幕下載成功\n")
-            else:
-                # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'Error')
-                print(video_id, "英語字幕下載失敗\n")
-        else:
-            # db_change_value(id = video_id, col_name = 'has_subtitles', value = 'No_en')
-            print(video_id, "該影片沒有可用的英語字幕")
+    def downlaod_subtitle(self, download_lang:str, video_id:str):
+        download_command = [
+            'yt-dlp',
+            '--write-sub',
+            '--sub-langs', download_lang,  # Specify the chosen language for download
+            '--skip-download',   # Only download subtitles, not the video
+            '-o', f'{self.output_dir}/%(id)s.%(ext)s',
+            f'https://www.youtube.com/watch?v={video_id}'
+        ]
+        download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Write download results to log file
+        self.write_log(video_id, "Download Subtitles Output:\n{download_result.stdout}\nDownload Subtitles Errors:\n{download_result.stderr}")
+        return download_result
+        
+    def write_log(self, video_id:str, message:str) -> None:
+        with open(f'subtitles/{video_id}_logs.txt', 'a') as log_file:
+            log_file.write(message)
 
 
 
