@@ -50,60 +50,84 @@ def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
                 print("Error decoding JSON from line:", line)
     return videos_info
 
-def fetch_existing_ids(db_path: str = 'sql/yt_info.db') -> Set[str]:
-    """
-    Retrieves a set of existing video IDs from the database.
+class OperateDB:
+    def __init__(self, db_path:str = 'sql/yt_info.db'): 
+        self.db_path = db_path
+        self.conn = sqlite3.connect(db_path)
+        self.cursor = self.conn.cursor()
 
-    This function queries the SQLite database at the specified path for all video
-    IDs stored in the 'videos' table. It returns these IDs in a set, which can be
-    used to check for existing videos and prevent duplicate entries.
+    def fetch_existing_ids(self)  -> Set[str]:
+        self.cursor.execute("SELECT id FROM videos")
+        existing_ids = {row[0] for row in self.cursor.fetchall()}
+        return existing_ids
+    
+    def save_new_yt_info(self, videos_info):
+        c = self.cursor
 
-    Args:
-        db_path (str): The file path to the SQLite database. Default is 'yt_info.db'.
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS videos (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            url TEXT,
+            description TEXT,
+            duration INTEGER,
+            view_count INTEGER,
+            webpage_url TEXT,
+            webpage_url_domain TEXT,
+            extractor TEXT,
+            playlist_title TEXT,
+            playlist_id TEXT,
+            playlist_uploader TEXT,
+            playlist_uploader_id TEXT,
+            n_entries INTEGER,
+            duration_string TEXT,
+            upload_date TEXT,
+            has_subtitles TEXT DEFAULT 'No',
+            has_generated_article TEXT DEFAULT 'No',
+            has_uploaded_article TEXT DEFAULT 'No'
+        );
+        ''')
 
-    Returns:
-        Set[str]: A set containing the video IDs already stored in the database.
+        for video in videos_info:
+            c.execute('''
+            INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
+                                playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
+                                has_subtitles, has_generated_article, has_uploaded_article)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                video['id'],
+                video.get('title', ''),
+                video.get('url', ''),
+                video.get('description', ''),
+                video.get('duration', None),
+                video.get('view_count', None),
+                video.get('webpage_url', ''),
+                video.get('webpage_url_domain', ''),
+                video.get('extractor', ''),
+                video.get('playlist_title', ''),
+                video.get('playlist_id', ''),
+                video.get('playlist_uploader', ''),
+                video.get('playlist_uploader_id', ''),
+                video.get('n_entries', None),
+                video.get('duration_string', ''),
+                video.get('upload_date', ''),  # 確保有上传日期
+                'No',  # has_subtitles
+                'No',  # has_generated_article
+                'No'   # has_uploaded_article
+            ))
+        self.conn.commit()
 
-    Example:
-        >>> existing_ids = fetch_existing_ids('yt_info.db')
-        >>> print(existing_ids)
-        {'video1', 'video2', 'video3'}
-    """
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM videos")
-    existing_ids = {row[0] for row in cursor.fetchall()}
-    conn.close()
-    return existing_ids
+
+    def check_no_subtitle_videos(self) -> Set[str]:
+        self.cursor.execute("SELECT id FROM videos WHERE has_subtitles='No'")
+        waitting_downlaod_ids = {row[0] for row in self.cursor.fetchall()}
+        return waitting_downlaod_ids 
+
+    def close(self):
+        self.cursor.close()
+        self.conn.close()                     
 
 def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """
-    Classifies videos into new or existing based on their IDs.
-
-    This function takes a list of video dictionaries and a set of existing video IDs,
-    and separates the videos into two lists: one for videos whose IDs are already in
-    the database, and another for those that are new and not present in the database.
-
-    Args:
-        new_videos (List[Dict[str, Any]]): A list of dictionaries, where each dictionary
-                                           contains details of a video.
-        existing_ids (Set[str]): A set of video IDs that have been previously stored in the database.
-
-    Returns:
-        Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: A tuple containing two lists:
-            - The first list contains dictionaries of videos that are already in the database.
-            - The second list contains dictionaries of new videos that are not in the database.
-
-    Example:
-        >>> new_videos = [{'id': 'video4', 'title': 'New Video 4'}, {'id': 'video1', 'title': 'Existing Video 1'}]
-        >>> existing_ids = {'video1', 'video2', 'video3'}
-        >>> new_data, existing_data = classify_videos(new_videos, existing_ids)
-        >>> print(new_data)
-        [{'id': 'video4', 'title': 'New Video 4'}]
-        >>> print(existing_data)
-        [{'id': 'video1', 'title': 'Existing Video 1'}]
-    """
-    
     new_data = []
     existing_data = []
     for video in new_videos:
@@ -112,68 +136,6 @@ def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) ->
         else:
             new_data.append(video)
     return new_data, existing_data
-
-
-
-def save_videos_to_db(videos_info, db_path:str = 'sql/yt_info.db'):
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS videos (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        url TEXT,
-        description TEXT,
-        duration INTEGER,
-        view_count INTEGER,
-        webpage_url TEXT,
-        webpage_url_domain TEXT,
-        extractor TEXT,
-        playlist_title TEXT,
-        playlist_id TEXT,
-        playlist_uploader TEXT,
-        playlist_uploader_id TEXT,
-        n_entries INTEGER,
-        duration_string TEXT,
-        upload_date TEXT,
-        has_subtitles TEXT DEFAULT 'No',
-        has_generated_article TEXT DEFAULT 'No',
-        has_uploaded_article TEXT DEFAULT 'No'
-    );
-    ''')
-
-    for video in videos_info:
-        c.execute('''
-        INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
-                            playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
-                            has_subtitles, has_generated_article, has_uploaded_article)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            video['id'],
-            video.get('title', ''),
-            video.get('url', ''),
-            video.get('description', ''),
-            video.get('duration', None),
-            video.get('view_count', None),
-            video.get('webpage_url', ''),
-            video.get('webpage_url_domain', ''),
-            video.get('extractor', ''),
-            video.get('playlist_title', ''),
-            video.get('playlist_id', ''),
-            video.get('playlist_uploader', ''),
-            video.get('playlist_uploader_id', ''),
-            video.get('n_entries', None),
-            video.get('duration_string', ''),
-            video.get('upload_date', ''),  # 確保有上传日期
-            'No',  # has_subtitles
-            'No',  # has_generated_article
-            'No'   # has_uploaded_article
-        ))
-
-    conn.commit()
-    conn.close()
-
 
 def save_videos_to_csv(videos_info, csv_path='yt_videos.csv'):
     with open(csv_path, mode='w', newline='', encoding='utf-8') as file:
