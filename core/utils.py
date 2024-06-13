@@ -4,6 +4,8 @@ import subprocess
 from typing import List, Dict, Any, Set, Tuple
 from datetime import datetime
 import re
+import os
+
 
 def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
     command = [
@@ -58,6 +60,7 @@ class OperateDB:
             duration_string TEXT,
             upload_date TEXT,
             has_subtitles TEXT DEFAULT 'No',
+            has_address_subtitles TEXT DEFAULT 'No',
             has_generated_article TEXT DEFAULT 'No',
             has_uploaded_article TEXT DEFAULT 'No'
         );
@@ -67,8 +70,8 @@ class OperateDB:
             c.execute('''
             INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
                                 playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
-                                has_subtitles, has_generated_article, has_uploaded_article)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                has_subtitles, has_address_subtitles, has_generated_article, has_uploaded_article)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 video['id'],
                 video.get('title', ''),
@@ -87,15 +90,30 @@ class OperateDB:
                 video.get('duration_string', ''),
                 video.get('upload_date', ''),  # 確保有上传日期
                 'No',  # has_subtitles
+                'No',
                 'No',  # has_generated_article
                 'No'   # has_uploaded_article
             ))
         self.conn.commit()
 
-    def check_no_subtitle_videos(self) -> Set[str]:
-        self.cursor.execute("SELECT id FROM videos WHERE has_subtitles='No'")
-        waitting_downlaod_ids = {row[0] for row in self.cursor.fetchall()}
-        return waitting_downlaod_ids 
+    def get_video_ids(self, conditions: dict = {'has_subtitles': 'No'}) -> Set[str]:
+        '''
+        Example:
+            conditions = {'has_subtitles': 'No', 'has_uploaded_article': 'No'}
+            video_ids = db.get_video_ids(conditions)
+        '''
+        if not conditions:
+            raise ValueError("No conditions provided for the query.")
+        
+        # 准备查询条件和参数
+        query_conditions = " AND ".join([f"{col} = ?" for col in conditions])
+        parameters = tuple(conditions.values())
+
+        # 构建并执行 SQL 查询
+        sql_query = f"SELECT id FROM videos WHERE {query_conditions}"
+        self.cursor.execute(sql_query, parameters)
+        waiting_download_ids = {row[0] for row in self.cursor.fetchall()}
+        return waiting_download_ids
     
     def update_value(self, id: str, col_name: str, value: str) -> None:
         try:
@@ -222,6 +240,65 @@ class SubtitleDownloader:
     def write_log(self, video_id:str, message:str) -> None:
         with open(f'subtitles/{video_id}_logs.txt', 'a') as log_file:
             log_file.write(message)
+
+
+def clean_subtitles(file_path:str, output_dir:str = 'output/adress_subtitles') -> None:
+    # 用于匹配时间线和WEBVTT的标头
+    time_stamp_regex = re.compile(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}.*")
+    tag_regex = re.compile(r"<\d{2}:\d{2}:\d{2}\.\d{3}><c>.*?</c>")
+
+    # 读取字幕文件
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    # 清洗数据
+    cleaned_lines = []
+    for line in lines:
+        if not time_stamp_regex.match(line) and not line.startswith('WEBVTT') and line.strip():
+            # 移除字幕中的标签
+            line = re.sub(tag_regex, '', line)
+            cleaned_lines.append(line.strip())
+
+    # 将处理后的文本合并为一个字符串
+    cleaned_text = ' '.join(cleaned_lines)
+
+
+    filename = os.path.basename(file_path)
+    new_filename = filename.rsplit('.', 1)[0] + '.txt'
+
+    # 写入到新的文件中
+    filename = os.path.join(output_dir, new_filename)
+
+    ensure_directory_exists(filename)
+    with open(filename, 'w', encoding='utf-8') as output_file:
+        output_file.write(cleaned_text)
+
+    print("字幕已清洗完毕并保存到, ", filename)
+
+
+
+def find_files(directory, search_text):
+    # 检查目录是否存在
+    if not os.path.exists(directory):
+        print("The directory does not exist.")
+        return []
+
+    # 搜索符合条件的文件名
+    matching_files = []
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            if search_text in filename:
+                matching_files.append(os.path.join(root, filename))
+    
+    return matching_files
+
+def ensure_directory_exists(filename):
+    # 获取文件的目录路径
+    directory = os.path.dirname(filename)
+    
+    # 如果目录不存在，创建它
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)  # exist_ok=True 防止在目录已存在时抛出异常
 
 # 示例用法
 #import csv
