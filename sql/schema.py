@@ -2,7 +2,7 @@ import sqlite3
 
 # 连接到 SQLite 数据库
 # 如果数据库不存在，会自动创建一个数据库文件
-conn = sqlite3.connect('./sql/yt_info.db')
+conn = sqlite3.connect('output/yt_info.db')
 
 # 创建一个 cursor 对象
 c = conn.cursor()

@@ -2,7 +2,7 @@ import sqlite3
 
 try:
     # 连接到 SQLite 数据库
-    conn = sqlite3.connect('sql/yt_info.db')
+    conn = sqlite3.connect('output/yt_info.db')
     print("数据库连接成功，版本为", sqlite3.version)
 
     # 创建一个 cursor 对象

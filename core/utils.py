@@ -6,31 +6,6 @@ from datetime import datetime
 import re
 
 def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
-    """
-    Fetches a list of videos from a YouTube playlist using the `yt-dlp` tool.
-
-    This function calls the `yt-dlp` command-line program to retrieve information
-    about each video in a YouTube playlist specified by the URL. The function
-    parses the JSON output from `yt-dlp` and returns a list of video details.
-
-    Args:
-        playlist_url (str): The full URL to the YouTube user's playlist or channel,
-                            e.g., "https://www.youtube.com/@benhsu501".
-
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries, where each dictionary contains
-                              details of a video. Possible keys include 'title', 'url',
-                              'duration', etc.
-
-    Raises:
-        subprocess.CalledProcessError: If `yt-dlp` fails to run.
-        json.JSONDecodeError: If parsing JSON fails.
-
-    Example:
-        >>> fetch_youtube_playlist("https://www.youtube.com/@benhsu501")
-        [{'title': 'Example Video', 'url': 'https://youtube.com/example', ...}, ...]
-
-    """
     command = [
         'yt-dlp',
         '-o', '%(title)s.%(ext)s',
@@ -51,7 +26,7 @@ def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
     return videos_info
 
 class OperateDB:
-    def __init__(self, db_path:str = 'sql/yt_info.db'): 
+    def __init__(self, db_path:str = 'output/yt_info.db'): 
         self.db_path = db_path
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
@@ -117,11 +92,23 @@ class OperateDB:
             ))
         self.conn.commit()
 
-
     def check_no_subtitle_videos(self) -> Set[str]:
         self.cursor.execute("SELECT id FROM videos WHERE has_subtitles='No'")
         waitting_downlaod_ids = {row[0] for row in self.cursor.fetchall()}
         return waitting_downlaod_ids 
+    
+    def update_value(self, id: str, col_name: str, value: str) -> None:
+        try:
+            # Prepare the SQL statement
+            sql = f"UPDATE videos SET {col_name} = ? WHERE id = ?"
+            # Execute the SQL statement
+            self.cursor.execute(sql, (value, id))
+            # Commit the changes
+            self.conn.commit()
+            print("Database updated successfully.")
+        except sqlite3.Error as e:
+            print(f"An error occurred: {e}")
+            raise
 
     def close(self):
         self.cursor.close()
@@ -137,53 +124,8 @@ def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) ->
             new_data.append(video)
     return new_data, existing_data
 
-def save_videos_to_csv(videos_info, csv_path='yt_videos.csv'):
-    with open(csv_path, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        headers = ['id', 'title', 'url', 'description', 'duration', 'view_count', 'webpage_url', 'webpage_url_domain',
-                   'extractor', 'playlist_title', 'playlist_id', 'playlist_uploader', 'playlist_uploader_id', 'n_entries', 'duration_string', 'upload_date']
-        writer.writerow(headers)
-        for video in videos_info:
-            row = [
-                video['id'],
-                video.get('title', ''),
-                video.get('url', ''),
-                video.get('description', ''),
-                video.get('duration', None),
-                video.get('view_count', None),
-                video.get('webpage_url', ''),
-                video.get('webpage_url_domain', ''),
-                video.get('extractor', ''),
-                video.get('playlist_title', ''),
-                video.get('playlist_id', ''),
-                video.get('playlist_uploader', ''),
-                video.get('playlist_uploader_id', ''),
-                video.get('n_entries', None),
-                video.get('duration_string', ''),
-                video.get('upload_date', ''),
-                'No',  # has_subtitles
-                'No',  # has_generated_article
-                'No'   # has_uploaded_article
-            ]
-            writer.writerow(row)
-
-def check_db_subtitles_info(db_path: str = 'sql/yt_info.db') -> Set[str]:
-    """
-    
-    """
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id FROM videos WHERE has_subtitles='No'")
-    waitting_downlaod_ids = {row[0] for row in cursor.fetchall()}
-
-    conn.close()
-                   
-    return waitting_downlaod_ids
-
-
 class SubtitleDownloader:
-    def __init__(self, output_dir:str = 'subtitles', priority_langs:List[str] = ['en', 'zh-TW', 'zh', 'es']) -> None:
+    def __init__(self, output_dir:str = 'output/subtitles', priority_langs:List[str] = ['en', 'zh-TW', 'zh', 'es']) -> None:
         self.output_dir = output_dir
         self.priority_langs = priority_langs
 
@@ -191,6 +133,7 @@ class SubtitleDownloader:
         self.log_path = f'{self.output_dir}/{now_tinme}_yt_dlp_logs.txt'
 
     def check_and_download_subtitles(self, video_ids:List[str], mode:int) -> None:
+        db = OperateDB()
         # 依據每一個函數使用
         for video_id in video_ids:
             # check subtilte
@@ -206,10 +149,15 @@ class SubtitleDownloader:
                 download_result = self.downlaod_subtitle(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
                 if download_result.returncode == 0:
                     self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
+                    db.update_value(video_id, 'has_subtitles', 'Done')
                 else:
                     self.write_log(video_id, "An error occurred while downloading subtitles.\n")
+                    db.update_value(video_id, 'has_subtitles', 'Error')
+
             else:
                 self.write_log(video_id, "No suitable subtitles were found.\n")
+                db.update_value(video_id, 'has_subtitles', 'NotFound')
+
 
 
     def select_subtitle_lag(self, subtitles:List[str]):
@@ -274,51 +222,6 @@ class SubtitleDownloader:
     def write_log(self, video_id:str, message:str) -> None:
         with open(f'subtitles/{video_id}_logs.txt', 'a') as log_file:
             log_file.write(message)
-
-
-
-import sqlite3
-
-def db_change_value(id: str, col_name: str, value: str, db_path: str = 'sql/yt_info.db'):
-    """
-    Changes a specific value in the database for a given video ID.
-
-    This function updates a specific column for a single row in the SQLite database,
-    identified by the video ID. It allows for dynamically setting the column and value.
-
-    Args:
-        id (str): The ID of the video whose data needs to be updated.
-        col_name (str): The name of the column in the database to update.
-        value (str): The new value to set in the specified column.
-        db_path (str): The path to the SQLite database file. Defaults to 'sql/yt_info.db'.
-
-    Raises:
-        ValueError: If the column name provided does not exist in the database.
-        sqlite3.Error: If an error occurs during the database operation.
-
-    Example:
-        >>> db_change_value('video123', 'title', 'New Video Title')
-        # This will update the 'title' column for the video with ID 'video123' to 'New Video Title'.
-    """
-    # Connect to the SQLite database
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    try:
-        # Prepare the SQL statement
-        sql = f"UPDATE videos SET {col_name} = ? WHERE id = ?"
-        # Execute the SQL statement
-        cursor.execute(sql, (value, id))
-        # Commit the changes
-        conn.commit()
-        print("Database updated successfully.")
-    except sqlite3.Error as e:
-        print(f"An error occurred: {e}")
-        raise
-    finally:
-        # Ensure that the connection is closed
-        conn.close()
-
 
 # 示例用法
 #import csv

@@ -1,5 +1,5 @@
 import argparse
-from core.utils import fetch_youtube_playlist, classify_videos, check_db_subtitles_info, db_change_value
+from core.utils import fetch_youtube_playlist, classify_videos
 from core.utils import  SubtitleDownloader, OperateDB
 
 def main():
@@ -18,7 +18,6 @@ def main():
         # 查看抓下來的數據是否已經存在 db
         db = OperateDB()
         existing_ids = db.fetch_existing_ids()
-
         # 判斷哪些數據需要加入資料庫
         new_videos, existing_videos = classify_videos(videos_info, existing_ids)
 
@@ -32,14 +31,16 @@ def main():
             print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
 
         db.save_new_yt_info(new_videos)
+        db.close()
 
     if args.mode == "download_subtitle":
         
-        video_ids = check_db_subtitles_info()
+        db = OperateDB()
+        video_ids = db.check_no_subtitle_videos()
         downloader = SubtitleDownloader()
         #downloader.check_and_download_subtitles(['HjgerWSDoXE'], 0)       
         downloader.check_and_download_subtitles(video_ids, 0) 
-
+    
 if __name__ == "__main__":
     main()
 
