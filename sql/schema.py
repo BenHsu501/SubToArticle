@@ -27,6 +27,7 @@ CREATE TABLE videos (
     duration_string TEXT,
     upload_date TEXT,
     has_subtitles TEXT DEFAULT 'No',
+    tpye_subtitle TEXT DEFAULT 'No',
     has_address_subtitles TEXT DEFAULT 'No',
     has_generated_article TEXT DEFAULT 'No',
     has_uploaded_article TEXT DEFAULT 'No'

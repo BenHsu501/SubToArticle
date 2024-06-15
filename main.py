@@ -8,6 +8,7 @@ def main():
     parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
+    parser.add_argument("--max_download_num", type=int, default=100)
 
     args = parser.parse_args()
 
@@ -45,7 +46,7 @@ def main():
 
         # video_ids = db.get_video_id(has_address_subtitles, )
         video_ids = db.get_video_ids({'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
-        for video_id in video_ids:
+        for video_id in video_ids[:args.max_download_num]:
             input_path = 'output/subtitles' 
             output_path = 'output/adress_subtitles'
             matched_files = find_files(input_path, video_id)
@@ -56,20 +57,10 @@ def main():
         db.close()
 
     if args.mode == 'test':
-        db = OperateDB()
-        video_ids = db.get_video_ids({'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
-        print(video_ids)
-        for video_id in video_ids:
-            input_path = os.path.join(args.output, 'subtitles')
-            output_path = os.path.join(args.output, 'adress_subtitles')
-            
-            matched_files = find_files(input_path, video_id)
-            print(matched_files)
+        downloader = SubtitleDownloader()
+        downloader.check_and_download_subtitles(['cPdVWtRFDqw'], 0)
 
-            clean_subtitles(file_path = matched_files[0],
-                            output_dir = output_path)
-
-        db.close()
+        # db.close()
 
 
 if __name__ == "__main__":

@@ -187,8 +187,7 @@ class SubtitleDownloader:
                 download_lang = lang
                 break
         # 如果有除了 priority 的語言，就使用第一個
-        if download_lang is None: 
-            print(subtitles[0])
+        if download_lang is None and len(subtitles) > 0: 
             download_lang = subtitles[0]    
         return download_lang
 
@@ -207,6 +206,30 @@ class SubtitleDownloader:
             self.write_log(video_id, f"Error listing subtitles for video ID {video_id}\n")
             return None, None
         
+        # check subtitle exits.
+        if 'vtt' in list_result.stdout:
+            print('1. vtt exits.')
+            list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
+            if '[info] Available subtitles for' in list_result.stdout:
+                manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
+                                         list_result_split_by_subtitletype[1], re.MULTILINE)
+                print('2. aaaa', manual_subs)
+                if len(manual_subs) > 0:
+                    # 有可能仍沒有字幕
+                    return manual_subs, 'manual'
+            if '[info] Available automatic captions' in list_result.stdout:
+                automatic_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
+                                            list_result_split_by_subtitletype[0], re.MULTILINE)
+                if len(automatic_subs) > 1:
+                    # 有可能仍沒有字幕
+                    return automatic_subs, 'auto'
+            ValueError("Check another situation.")
+            
+        else:
+            return None, None
+        #print('aaa', list_result.stdout.split('\n'))
+        
+        '''
          # Regex to find available subtitles
         list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
         if 'has no subtitles' in list_result_split_by_subtitletype[0]:
@@ -219,7 +242,12 @@ class SubtitleDownloader:
                     return None, 'auto'
         else:
             manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[1], re.MULTILINE)
+            # manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[0], re.MULTILINE)
+
+            print('aaa', manual_subs)
             return manual_subs, 'manual'
+        '''
+
 
     def downlaod_subtitle(self, download_lang:str, video_id:str, subtitle_type:int = 'manual'):
         sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
@@ -238,7 +266,7 @@ class SubtitleDownloader:
         return download_result
         
     def write_log(self, video_id:str, message:str) -> None:
-        with open(f'subtitles/{video_id}_logs.txt', 'a') as log_file:
+        with open(f'output/subtitles/{video_id}_logs.txt', 'a') as log_file:
             log_file.write(message)
 
 
