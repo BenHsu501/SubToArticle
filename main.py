@@ -46,7 +46,7 @@ def main():
 
         # video_ids = db.get_video_id(has_address_subtitles, )
         video_ids = db.get_video_ids({'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
-        for video_id in list(video_ids)[:args.max_download_num]:
+        for video_id in list(video_ids):
             print('1', video_id)
             input_path = 'output/subtitles' 
             output_path = 'output/adress_subtitles'
