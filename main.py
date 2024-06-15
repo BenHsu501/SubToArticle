@@ -46,11 +46,12 @@ def main():
 
         # video_ids = db.get_video_id(has_address_subtitles, )
         video_ids = db.get_video_ids({'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
-        for video_id in video_ids[:args.max_download_num]:
+        for video_id in list(video_ids)[:args.max_download_num]:
+            print('1', video_id)
             input_path = 'output/subtitles' 
             output_path = 'output/adress_subtitles'
-            matched_files = find_files(input_path, video_id)
-
+            matched_files = find_files(input_path, [video_id, 'vtt'])
+            print('2', matched_files)
             clean_subtitles(file_path = matched_files[0],
                             output_dir = output_path)
 
@@ -58,9 +59,11 @@ def main():
 
     if args.mode == 'test':
         downloader = SubtitleDownloader()
-        downloader.check_and_download_subtitles(['cPdVWtRFDqw'], 0)
+        # downloader.check_and_download_subtitles(['OZmoqGIjWus'], 0)
+        id = 'GBg-DZwgGkA'
+        id = 'JXUnrgp_8WI'
+        downloader.check_and_download_subtitles([id], 0)
 
-        # db.close()
 
 
 if __name__ == "__main__":

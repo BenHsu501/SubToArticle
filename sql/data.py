@@ -14,7 +14,7 @@ try:
     # 尝试插入数据
     video = ("test_video_id", "Test Video", "http://youtube.com/test", "Test description", 100, 150, "http://youtube.com/test", "youtube.com", "youtube", "Test Playlist", "TPL", "Test Uploader", "TU1", 1, "10:00", "20220101", "No", "No", "No", "No", "No")
     c.execute('''
-    INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor, playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date, has_subtitles, tpye_subtitle, has_address_subtitles, has_generated_article, has_uploaded_article)
+    INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor, playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date, has_subtitles, type_subtitle, has_address_subtitles, has_generated_article, has_uploaded_article)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', video)
 

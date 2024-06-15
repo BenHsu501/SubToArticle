@@ -123,7 +123,8 @@ class OperateDB:
             self.cursor.execute(sql, (value, id))
             # Commit the changes
             self.conn.commit()
-            print("Database updated successfully.")
+            print(f'Column "{col_name}" updated to "{value}" successfully.')
+            "The \"has_subtitles\" col in the DB was updated successfully to \"Done\"."
         except sqlite3.Error as e:
             print(f"An error occurred: {e}")
             raise
@@ -151,16 +152,15 @@ class SubtitleDownloader:
         self.log_path = f'{self.output_dir}/{now_tinme}_yt_dlp_logs.txt'
 
     def check_and_download_subtitles(self, video_ids:List[str], mode:int) -> None:
-        db = OperateDB()
-        # 依據每一個函數使用
+        db = OperateDB()  
         for video_id in video_ids:
             # check subtilte
-            print(video_id, self.check_subtitle_available(video_id, mode))
             manual_subs, subtitle_type = self.check_subtitle_available(video_id, mode)
-            # select_subtitle_lag
+            print(video_id, manual_subs, subtitle_type)
+            # select_subtitle_lang
             download_lang = None
             if not manual_subs is None:
-                download_lang = self.select_subtitle_lag(manual_subs)
+                download_lang = self.select_subtitle_lang(manual_subs)
             
             # 字幕下載
             if download_lang:
@@ -171,14 +171,14 @@ class SubtitleDownloader:
                 else:
                     self.write_log(video_id, "An error occurred while downloading subtitles.\n")
                     db.update_value(video_id, 'has_subtitles', 'Error')
-
+                db.update_value(video_id, 'tpye_subtitle', subtitle_type)
             else:
                 self.write_log(video_id, "No suitable subtitles were found.\n")
                 db.update_value(video_id, 'has_subtitles', 'NotFound')
+        db.close()
 
 
-
-    def select_subtitle_lag(self, subtitles:List[str]):
+    def select_subtitle_lang(self, subtitles:List[str]):
         download_lang = None
         # 依據優先序選擇下載語言
         for lang in self.priority_langs:
@@ -211,20 +211,21 @@ class SubtitleDownloader:
             print('1. vtt exits.')
             list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
             if '[info] Available subtitles for' in list_result.stdout:
-                manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
-                                         list_result_split_by_subtitletype[1], re.MULTILINE)
-                print('2. aaaa', manual_subs)
+                _split = list_result_split_by_subtitletype[1].split('\n')
+                manual_subs = [index.split(' ')[0] for index in _split if 'vtt' in index]
+
                 if len(manual_subs) > 0:
                     # 有可能仍沒有字幕
                     return manual_subs, 'manual'
             if '[info] Available automatic captions' in list_result.stdout:
-                automatic_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
-                                            list_result_split_by_subtitletype[0], re.MULTILINE)
+                _split = list_result_split_by_subtitletype[0].split('\n')
+                automatic_subs = [index.split(' ')[0] for index in _split if 'vtt' in index]
+                # automatic_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
+                #                             list_result_split_by_subtitletype[0], re.MULTILINE)
                 if len(automatic_subs) > 1:
                     # 有可能仍沒有字幕
                     return automatic_subs, 'auto'
-            ValueError("Check another situation.")
-            
+            ValueError("Check another situation.")    
         else:
             return None, None
         #print('aaa', list_result.stdout.split('\n'))
@@ -304,18 +305,17 @@ def clean_subtitles(file_path:str, output_dir:str = 'output/adress_subtitles') -
     print("字幕已清洗完毕并保存到, ", filename)
 
 
-
-def find_files(directory, search_text):
-    # 检查目录是否存在
+def find_files(directory: str, search_texts: List[str]) -> List[str]:
+    # Check if the directory exists
     if not os.path.exists(directory):
         print("The directory does not exist.")
         return []
 
-    # 搜索符合条件的文件名
+    # Search for files that contain all specified search_texts
     matching_files = []
     for root, dirs, files in os.walk(directory):
         for filename in files:
-            if search_text in filename:
+            if all(search_text in filename for search_text in search_texts):
                 matching_files.append(os.path.join(root, filename))
     
     return matching_files
