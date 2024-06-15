@@ -8,7 +8,7 @@ def main():
     parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
-    parser.add_argument("--max_download_num", type=int, default=100)
+    # parser.add_argument("--max_download_num", type=int, default=100)
 
     args = parser.parse_args()
 
