@@ -171,7 +171,7 @@ class SubtitleDownloader:
                 else:
                     self.write_log(video_id, "An error occurred while downloading subtitles.\n")
                     db.update_value(video_id, 'has_subtitles', 'Error')
-                db.update_value(video_id, 'tpye_subtitle', subtitle_type)
+                db.update_value(video_id, 'type_subtitle', subtitle_type)
             else:
                 self.write_log(video_id, "No suitable subtitles were found.\n")
                 db.update_value(video_id, 'has_subtitles', 'NotFound')
@@ -208,7 +208,6 @@ class SubtitleDownloader:
         
         # check subtitle exits.
         if 'vtt' in list_result.stdout:
-            print('1. vtt exits.')
             list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
             if '[info] Available subtitles for' in list_result.stdout:
                 _split = list_result_split_by_subtitletype[1].split('\n')
