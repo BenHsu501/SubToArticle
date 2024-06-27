@@ -9,6 +9,7 @@ COPY requirements.txt .
 
 # 安裝 requirements.txt 中列出的所有依賴
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install git+https://github.com/BenHsu501/CopyCraftAPI.git
 
 # 安裝 SQLite3（如果 Python 映像中不包含）
 RUN apt-get update && apt-get install -y sqlite3

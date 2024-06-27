@@ -164,17 +164,25 @@ class SubtitleDownloader:
             
             # 字幕下載
             if download_lang:
-                download_result = self.downlaod_subtitle(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
+                download_result = self.downlaod_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
                 if download_result.returncode == 0:
                     self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
                     db.update_value(video_id, 'has_subtitles', 'Done')
+                    # print('has_subtitles', 'Done')
+                    return {'state': 'Done'}
                 else:
                     self.write_log(video_id, "An error occurred while downloading subtitles.\n")
                     db.update_value(video_id, 'has_subtitles', 'Error')
+                    # print('has_subtitles', 'Error')
+                    return {'state': 'Error'}
+
                 db.update_value(video_id, 'type_subtitle', subtitle_type)
             else:
                 self.write_log(video_id, "No suitable subtitles were found.\n")
                 db.update_value(video_id, 'has_subtitles', 'NotFound')
+                # print('has_subtitles', 'NotFound')
+                return {'state': 'NotFound'}
+
         db.close()
 
 
@@ -249,22 +257,32 @@ class SubtitleDownloader:
         '''
 
 
-    def downlaod_subtitle(self, download_lang:str, video_id:str, subtitle_type:int = 'manual'):
-        sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
-        download_command = [
-            'yt-dlp',
-            sub_command,  # 使用手动或自动字幕下载指令
-            '--sub-langs', download_lang,  # 指定下载语言
-            '--skip-download',  # 只下载字幕，不下载视频
-            '-o', f'{self.output_dir}/%(id)s.%(ext)s',
-            f'https://www.youtube.com/watch?v={video_id}'
-        ]
+    def downlaod_audio(self, download_lang:str, video_id:str, subtitle_type:int = 'manual', type:str = 'subtitle'):
+
+        if type == 'subtitle':
+            sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
+            download_command = [
+                'yt-dlp',
+                sub_command,  # 使用手动或自动字幕下载指令
+                '--sub-langs', download_lang,  # 指定下载语言
+                '--skip-download',  # 只下载字幕，不下载视频
+                '-o', f'{self.output_dir}/%(id)s.%(ext)s',
+                f'https://www.youtube.com/watch?v={video_id}'
+            ]
+        if type == 'mp3':
+            download_command = [
+                'yt-dlp',
+                '-x',  # Extract audio only
+                '--audio-format', 'mp3',  # Specify audio format as mp3
+                '-o', f'{self.output_dir}/%(id)s.%(ext)s',
+                f'https://www.youtube.com/watch?v={video_id}'
+            ]
 
         download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # Write download results to log file
-        self.write_log(video_id, "Download Subtitles Output:\n{download_result.stdout}\nDownload Subtitles Errors:\n{download_result.stderr}")
+        self.write_log(video_id, f"Download {type} Output:\n{download_result.stdout}\nDownload {type} Errors:\n{download_result.stderr}")
         return download_result
-        
+
     def write_log(self, video_id:str, message:str) -> None:
         with open(f'output/subtitles/{video_id}_logs.txt', 'a') as log_file:
             log_file.write(message)

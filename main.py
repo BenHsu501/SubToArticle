@@ -5,9 +5,11 @@ import os
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
-    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'test'], help="Select the mode of operation.")
+    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'download_video_subtitle', 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
+    parser.add_argument("--video_id", type=str, default='output/')
+
     # parser.add_argument("--max_download_num", type=int, default=100)
 
     args = parser.parse_args()
@@ -36,7 +38,7 @@ def main():
         db.save_new_yt_info(new_videos)
         db.close()
 
-    if args.mode == "download_subtitle":
+    if args.mode == "download_playlist_subtitle":
         
         db = OperateDB()
         video_ids = db.get_video_ids()
@@ -50,12 +52,30 @@ def main():
             print('1', video_id)
             input_path = 'output/subtitles' 
             output_path = 'output/adress_subtitles'
+            downloader = SubtitleDownloader()
             matched_files = find_files(input_path, [video_id, 'vtt'])
             print('2', matched_files)
             clean_subtitles(file_path = matched_files[0],
                             output_dir = output_path)
 
         db.close()
+    
+    if args.mode == "download_video_subtitle":
+        video_id = args.video_id
+
+        downloader = SubtitleDownloader()
+        state_result = downloader.check_and_download_subtitles([video_id], 0)
+        if state_result == 'Error' and 1: # here need to add a logic which judge download mp3 file
+            downloader.check_and_download_subtitles([video_id], 0)
+        print(1, state_result)
+        input_path = 'output/subtitles' 
+        output_path = 'output/adress_subtitles'
+        matched_files = find_files(input_path, [video_id, 'vtt'])
+        print('2', matched_files)
+        # 下面寫 db 的寫入
+
+    if args.mode == 'create_article':
+        import CopyCraftAPI.utils as CopyCraftAPI
 
     if args.mode == 'test':
         downloader = SubtitleDownloader()
