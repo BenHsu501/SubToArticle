@@ -1,14 +1,15 @@
 import argparse
 from core.utils import fetch_youtube_playlist, classify_videos, clean_subtitles, find_files
-from core.utils import  SubtitleDownloader, OperateDB
+from core.utils import  MediaDownloader, OperateDB
 import os 
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
-    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'download_video_subtitle', 'test'], help="Select the mode of operation.")
+    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'download_single_subtitle', 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
     parser.add_argument("--video_id", type=str, default='output/')
+    parser.add_argument("--download_mode", choices=['mp3', 'subtitle', 'both'], type=str, default='both', help = 'mp3: Subtitle comes from the Whisper-extracted MP3 file. subtitle: Subtitle comes from YouTube. both: When YouTube does not provide a subtitle, use the MP3 mode.')
 
     # parser.add_argument("--max_download_num", type=int, default=100)
 
@@ -42,7 +43,7 @@ def main():
         
         db = OperateDB()
         video_ids = db.get_video_ids()
-        downloader = SubtitleDownloader()
+        downloader = MediaDownloader()
         #downloader.check_and_download_subtitles(['HjgerWSDoXE'], 0)       
         downloader.check_and_download_subtitles(video_ids, 0)
 
@@ -52,7 +53,7 @@ def main():
             print('1', video_id)
             input_path = 'output/subtitles' 
             output_path = 'output/adress_subtitles'
-            downloader = SubtitleDownloader()
+            downloader = MediaDownloader()
             matched_files = find_files(input_path, [video_id, 'vtt'])
             print('2', matched_files)
             clean_subtitles(file_path = matched_files[0],
@@ -60,31 +61,47 @@ def main():
 
         db.close()
     
-    if args.mode == "download_video_subtitle":
+    if args.mode == "download_single_subtitle":
         video_id = args.video_id
 
-        downloader = SubtitleDownloader()
-        state_result = downloader.check_and_download_subtitles([video_id], 0)
-        if state_result == 'Error' and 1: # here need to add a logic which judge download mp3 file
-            downloader.check_and_download_subtitles([video_id], 0)
-        print(1, state_result)
+        downloader = MediaDownloader()
+        state_result = None
+
+        if args.download_mode in ['subtitle', 'both']:
+            state_result = downloader.check_and_download_subtitles([video_id], 0)
+            if args.download_mode == 'both':
+                if state_result['state'] == 'NotFound':
+                    downloader.downlaod_audio(video_id = video_id, download_type = 'mp3')
+
+        if args.download_mode == 'mp3':
+            downloader.downlaod_audio(video_id = video_id, download_type = 'mp3')
+
+
+
         input_path = 'output/subtitles' 
         output_path = 'output/adress_subtitles'
         matched_files = find_files(input_path, [video_id, 'vtt'])
-        print('2', matched_files)
         # 下面寫 db 的寫入
 
     if args.mode == 'create_article':
         import CopyCraftAPI.utils as CopyCraftAPI
 
     if args.mode == 'test':
-        downloader = SubtitleDownloader()
+        # ownloader = MediaDownloader()
         # downloader.check_and_download_subtitles(['OZmoqGIjWus'], 0)
-        id = 'GBg-DZwgGkA'
-        id = 'JXUnrgp_8WI'
-        downloader.check_and_download_subtitles([id], 0)
+        # id = 'GBg-DZwgGkA'
+        # id = 'JXUnrgp_8WI'
+        # downloader.check_and_download_subtitles([id], 0)
 
+        from openai import OpenAI
+        client = OpenAI()
 
+        audio_file= open("output/mp3/ScVRy6PxT_A.mp3", "rb")
+        transcription = client.audio.transcriptions.create(
+            model="whisper-1", 
+            file=audio_file
+        )
+        print(transcription.text)   
 
 if __name__ == "__main__":
     main()

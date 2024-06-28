@@ -143,13 +143,13 @@ def classify_videos(new_videos: List[Dict[str, Any]], existing_ids: Set[str]) ->
             new_data.append(video)
     return new_data, existing_data
 
-class SubtitleDownloader:
-    def __init__(self, output_dir:str = 'output/subtitles', priority_langs:List[str] = ['en', 'zh-TW', 'zh', 'es']) -> None:
+class MediaDownloader:
+    def __init__(self, output_dir:str = 'output/', priority_langs:List[str] = ['en', 'zh-TW', 'zh', 'es']) -> None:
         self.output_dir = output_dir
         self.priority_langs = priority_langs
 
-        now_tinme = '{:%y%m%d_%H%M%S%}'.format(datetime.now())
-        self.log_path = f'{self.output_dir}/{now_tinme}_yt_dlp_logs.txt'
+        now_time = '{:%y%m%d_%H%M%S%}'.format(datetime.now())
+        self.log_path = f'{self.output_dir}/subtitles/{now_time}_yt_dlp_logs.txt'
 
     def check_and_download_subtitles(self, video_ids:List[str], mode:int) -> None:
         db = OperateDB()  
@@ -190,7 +190,6 @@ class SubtitleDownloader:
         download_lang = None
         # 依據優先序選擇下載語言
         for lang in self.priority_langs:
-
             if any(lang == sub for sub in subtitles):
                 download_lang = lang
                 break
@@ -257,28 +256,29 @@ class SubtitleDownloader:
         '''
 
 
-    def downlaod_audio(self, download_lang:str, video_id:str, subtitle_type:int = 'manual', type:str = 'subtitle'):
-
-        if type == 'subtitle':
+    def downlaod_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
+        if download_type == 'subtitle':
             sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
             download_command = [
                 'yt-dlp',
                 sub_command,  # 使用手动或自动字幕下载指令
                 '--sub-langs', download_lang,  # 指定下载语言
                 '--skip-download',  # 只下载字幕，不下载视频
-                '-o', f'{self.output_dir}/%(id)s.%(ext)s',
+                '-o', f'{self.output_dir}/{download_type}/%(id)s.%(ext)s',
                 f'https://www.youtube.com/watch?v={video_id}'
             ]
-        if type == 'mp3':
+        if download_type == 'mp3':
+            # breakpoint()
             download_command = [
                 'yt-dlp',
                 '-x',  # Extract audio only
                 '--audio-format', 'mp3',  # Specify audio format as mp3
-                '-o', f'{self.output_dir}/%(id)s.%(ext)s',
+                '-o', f'{self.output_dir}/{download_type}/%(id)s.%(ext)s',
                 f'https://www.youtube.com/watch?v={video_id}'
             ]
+            print(download_command)
+        download_result = subprocess.run(download_command, stdout=None, stderr=None, text=True)
 
-        download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # Write download results to log file
         self.write_log(video_id, f"Download {type} Output:\n{download_result.stdout}\nDownload {type} Errors:\n{download_result.stderr}")
         return download_result

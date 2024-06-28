@@ -11,9 +11,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install git+https://github.com/BenHsu501/CopyCraftAPI.git
 
-# 安裝 SQLite3（如果 Python 映像中不包含）
-RUN apt-get update && apt-get install -y sqlite3
+# 安裝 SQLite3 和 ffmpeg
+RUN apt-get update && apt-get install -y sqlite3 ffmpeg
 
+# 清理 apt-get 缓存
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 複製當前目錄中的所有內容到容器的工作目錄中
 COPY . .
