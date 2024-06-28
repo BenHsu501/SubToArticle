@@ -86,7 +86,7 @@ def main():
     if args.mode == 'create_article':
         import CopyCraftAPI.utils as CopyCraftAPI
 
-    if args.mode == 'test':
+    if args.mode == 'test2':
         # ownloader = MediaDownloader()
         # downloader.check_and_download_subtitles(['OZmoqGIjWus'], 0)
         # id = 'GBg-DZwgGkA'
@@ -102,6 +102,24 @@ def main():
             file=audio_file
         )
         print(transcription.text)   
+
+    if args.mode == 'test':
+        import sounddevice as sd
+        from scipy.io.wavfile import write  
+
+        def record_audio(duration, output_file):
+            fs = 44100  # Sample rate
+            print("Recording started...")
+            recording = sd.rec(int(duration * fs), samplerate=fs, channels=2)
+            sd.wait()  # Wait until recording is finished
+            write(output_file, fs, recording)  # Save as WAV file
+            print(f"Recording finished. Audio saved to {output_file}")
+
+        # Example usage: record audio for 10 seconds
+        if __name__ == "__main__":
+            duration = 10  # Duration in seconds
+            output_file = "audio.wav"
+            record_audio(duration, output_file)
 
 if __name__ == "__main__":
     main()
