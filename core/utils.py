@@ -164,7 +164,7 @@ class MediaDownloader:
             
             # 字幕下載
             if download_lang:
-                download_result = self.downlaod_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
+                download_result = self.download_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
                 if download_result.returncode == 0:
                     self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
                     db.update_value(video_id, 'has_subtitles', 'Done')
@@ -198,7 +198,7 @@ class MediaDownloader:
             download_lang = subtitles[0]    
         return download_lang
 
-    def check_subtitle_available(self, video_id:str, mode:int) -> None | str:
+    def check_subtitle_available(self, video_id:str, mode:int):
         list_command = [
             'yt-dlp',
             '--list-subs',
@@ -256,7 +256,7 @@ class MediaDownloader:
         '''
 
 
-    def downlaod_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
+    def download_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
         if download_type == 'subtitle':
             sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
             download_command = [
