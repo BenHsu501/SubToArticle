@@ -8,7 +8,7 @@ def main():
     parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_playlist_subtitle", 'download_single_subtitle', 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
-    parser.add_argument("--video_id", type=str, default='output/')
+    parser.add_argument("--video_id", type=str, nargs='+', help="One or more video IDs")
     parser.add_argument("--download_mode", choices=['mp3', 'subtitle', 'both'], type=str, default='both', help = 'mp3: Subtitle comes from the Whisper-extracted MP3 file. subtitle: Subtitle comes from YouTube. both: When YouTube does not provide a subtitle, use the MP3 mode.')
 
     # parser.add_argument("--max_download_num", type=int, default=100)
@@ -91,20 +91,21 @@ def main():
         import CopyCraftAPI.utils as CopyCraftAPI
 
     if args.mode == 'test':
+        print(args.video_id)
         # ownloader = MediaDownloader()
         # downloader.check_and_download_subtitles(['OZmoqGIjWus'], 0)
         # id = 'GBg-DZwgGkA'
         # id = 'JXUnrgp_8WI'
         # downloader.check_and_download_subtitles([id], 0)
 
-        client = OpenAI()
+        #client = OpenAI()
 
-        audio_file= open("output/mp3/ScVRy6PxT_A.mp3", "rb")
-        transcription = client.audio.transcriptions.create(
-            model="whisper-1", 
-            file=audio_file
-        )
-        print(transcription.text)   
+        #audio_file= open("output/mp3/ScVRy6PxT_A.mp3", "rb")
+        #transcription = client.audio.transcriptions.create(
+        #    model="whisper-1", 
+        #    file=audio_file
+        #)
+        #print(transcription.text)   
 
 if __name__ == "__main__":
     main()
