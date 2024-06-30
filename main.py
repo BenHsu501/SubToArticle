@@ -1,6 +1,6 @@
 import argparse
 from core.utils import fetch_youtube_playlist, classify_videos, clean_subtitles, find_files
-from core.utils import  MediaDownloader, OperateDB
+from core.utils import  MediaDownloader, OperateDB, WhisperRecognizer
 from openai import OpenAI
 
 def main():
@@ -72,23 +72,14 @@ def main():
             
             if args.download_mode == 'both' and state_result['state'] == 'NotFound':
                 downloader.downlaod_audio(video_id = video_id, download_type = 'mp3')
-                audio_file= open("output/mp3/ScVRy6PxT_A.mp3", "rb")
-                client = OpenAI()
-                transcription = client.audio.transcriptions.create(
-                    model="whisper-1", 
-                    file=audio_file
-                )
-                print(transcription.text)   
+                client = WhisperRecognizer()
+                result = client.transcribe_audio(video_id)
+                print(result)   
         if args.download_mode == 'mp3':
             downloader.downlaod_audio(video_id = video_id, download_type = 'mp3')
-            from openai import OpenAI
-            client = OpenAI()
-            audio_file= open(f"output/mp3/{video_id}.mp3", "rb")
-            transcription = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=audio_file
-            )
-            print(transcription.text)   
+            client = WhisperRecognizer()
+            result = client.transcribe_audio(video_id)
+            print(result)   
 
 
         input_path = 'output/subtitles' 
