@@ -1,21 +1,26 @@
 import argparse
 from core.utils import fetch_youtube_playlist, classify_videos, clean_subtitles, find_files
 from core.utils import  MediaDownloader, OperateDB, WhisperRecognizer
+from core.subtitle_downloader import MediaOperations
 from openai import OpenAI
+import CopyCraftAPI.utils as CopyCraftAPI
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
-    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_playlist_subtitle", 'download_single_subtitle', 'test'], help="Select the mode of operation.")
+    
+    parser.add_argument("--mode", default='full_process',  
+                    choices=["full_process", "fetch_video_id", 'download_subtitle', 'generate_article'], 
+                    help="Select the mode of operation. The mode 'full_process' runs through all three stages: fetch_video_id, download_subtitle, and generate_article. The other three modes execute each stage individually.")
+    parser.add_argument("--download_mode", choices=['video_id', 'playlist'], type=str, default='video_id', help = '')
+    parser.add_argument("--subtitle_source", choices=['mp3', 'subtitle', 'both'], type=str, default='both',
+        help="Specify the source of subtitles. 'mp3': Subtitles are generated from the Whisper-extracted MP3 file. 'subtitle': Subtitles are fetched from YouTube. 'both': If YouTube does not provide subtitles, generate them from the MP3 file.")
+
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
     parser.add_argument("--video_id", type=str, nargs='+', help="One or more video IDs")
-    parser.add_argument("--download_mode", choices=['mp3', 'subtitle', 'both'], type=str, default='both', help = 'mp3: Subtitle comes from the Whisper-extracted MP3 file. subtitle: Subtitle comes from YouTube. both: When YouTube does not provide a subtitle, use the MP3 mode.')
-
-    # parser.add_argument("--max_download_num", type=int, default=100)
 
     args = parser.parse_args()
-
-    if args.mode == 'fetch_youtube_playlist':
+    if args.mode == "fetch_video_id":
         channel_url = args.channel_url
 
         # 抓取 yt playlist
@@ -40,6 +45,13 @@ def main():
         db.save_new_yt_info(new_videos)
         db.close()
 
+    if args.mode == "download_subtitle" and args.download_mode == 'video_id':
+        client = MediaOperations(channel_url = '', mode = args.subtitle_source)
+        client.download_subtitles(args.video_ids)
+        
+
+    # =================== To be modified below
+        
     if args.mode == "download_playlist_subtitle":
         
         db = OperateDB()
@@ -88,8 +100,7 @@ def main():
         # 下面寫 db 的寫入
 
     if args.mode == 'create_article':
-        import CopyCraftAPI.utils as CopyCraftAPI
-
+        1
     if args.mode == 'test':
         print(args.video_id)
         # ownloader = MediaDownloader()
