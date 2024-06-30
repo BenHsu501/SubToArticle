@@ -3,8 +3,8 @@ import json
 import subprocess
 from typing import List, Dict, Any, Set, Tuple
 from datetime import datetime
-import re
-import os
+from openai import OpenAI
+import re, os
 
 
 def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
@@ -98,6 +98,8 @@ class OperateDB:
 
     def get_video_ids(self, conditions: dict = {'has_subtitles': 'No'}) -> Set[str]:
         '''
+        以 sql 多條件搜尋 db 中的 video_id
+
         Example:
             conditions = {'has_subtitles': 'No', 'has_uploaded_article': 'No'}
             video_ids = db.get_video_ids(conditions)
@@ -168,19 +170,16 @@ class MediaDownloader:
                 if download_result.returncode == 0:
                     self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
                     db.update_value(video_id, 'has_subtitles', 'Done')
-                    # print('has_subtitles', 'Done')
                     return {'state': 'Done'}
                 else:
                     self.write_log(video_id, "An error occurred while downloading subtitles.\n")
                     db.update_value(video_id, 'has_subtitles', 'Error')
-                    # print('has_subtitles', 'Error')
                     return {'state': 'Error'}
 
                 db.update_value(video_id, 'type_subtitle', subtitle_type)
             else:
                 self.write_log(video_id, "No suitable subtitles were found.\n")
                 db.update_value(video_id, 'has_subtitles', 'NotFound')
-                # print('has_subtitles', 'NotFound')
                 return {'state': 'NotFound'}
 
         db.close()
@@ -234,27 +233,6 @@ class MediaDownloader:
             ValueError("Check another situation.")    
         else:
             return None, None
-        #print('aaa', list_result.stdout.split('\n'))
-        
-        '''
-         # Regex to find available subtitles
-        list_result_split_by_subtitletype = list_result.stdout.split("[info] Available subtitles for")
-        if 'has no subtitles' in list_result_split_by_subtitletype[0]:
-            self.write_log(video_id, f" has no subtitles\n")
-            if mode == 0:
-                auto_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[0], re.MULTILINE)
-                if len(auto_subs) != 0:              
-                    return auto_subs, 'auto'
-                else:
-                    return None, 'auto'
-        else:
-            manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[1], re.MULTILINE)
-            # manual_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', list_result_split_by_subtitletype[0], re.MULTILINE)
-
-            print('aaa', manual_subs)
-            return manual_subs, 'manual'
-        '''
-
 
     def download_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
         if download_type == 'subtitle':
@@ -279,13 +257,44 @@ class MediaDownloader:
             print(download_command)
         download_result = subprocess.run(download_command, stdout=None, stderr=None, text=True)
 
-        # Write download results to log file
         self.write_log(video_id, f"Download {type} Output:\n{download_result.stdout}\nDownload {type} Errors:\n{download_result.stderr}")
         return download_result
 
     def write_log(self, video_id:str, message:str) -> None:
         with open(f'output/subtitles/{video_id}_logs.txt', 'a') as log_file:
             log_file.write(message)
+
+
+class WhisperRecognizer:
+    def __init__(self, api_key: str = None) -> None:
+        self.client = OpenAI()
+        if api_key:
+            self.client.api_key = api_key
+        else:
+            self.client.api_key = os.environ.get('OPENAI_API_KEY')
+        
+        if not self.client.api_key:
+            raise ValueError("You must provide an OpenAI API key either as a parameter or in the environment variable OPENAI_API_KEY.")
+        
+    def transcribe_audio(self, video_id: str) -> str:
+        audio_file = f"output/mp3/{video_id}.mp3"
+        if not os.path.exists(audio_file):
+            raise FileNotFoundError(f"The file {audio_file} does not exist.")
+        audio_file= open(f"output/mp3/{video_id}.mp3", "rb")
+        transcription = self.client.audio.transcriptions.create(
+            model="whisper-1", 
+            file=audio_file
+        )
+        self.save_transcription(video_id, transcription.text)
+        
+        return transcription.text
+
+    def save_transcription(self, video_id: str, text: str) -> None:
+        output_path = f"output/transcriptions/{video_id}.txt"
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"Transcription saved to {output_path}")
 
 
 def clean_subtitles(file_path:str, output_dir:str = 'output/adress_subtitles') -> None:

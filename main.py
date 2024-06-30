@@ -5,7 +5,7 @@ from openai import OpenAI
 
 def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
-    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_subtitle", 'download_single_subtitle', 'test'], help="Select the mode of operation.")
+    parser.add_argument("--mode", choices=["fetch_youtube_playlist", "download_playlist_subtitle", 'download_single_subtitle', 'test'], help="Select the mode of operation.")
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
     parser.add_argument("--output_path", type=str, default='output/')
     parser.add_argument("--video_id", type=str, default='output/')
@@ -24,6 +24,7 @@ def main():
         # 查看抓下來的數據是否已經存在 db
         db = OperateDB()
         existing_ids = db.fetch_existing_ids()
+
         # 判斷哪些數據需要加入資料庫
         new_videos, existing_videos = classify_videos(videos_info, existing_ids)
 
@@ -47,7 +48,6 @@ def main():
         #downloader.check_and_download_subtitles(['HjgerWSDoXE'], 0)       
         downloader.check_and_download_subtitles(video_ids, 0)
 
-        # video_ids = db.get_video_id(has_address_subtitles, )
         video_ids = db.get_video_ids({'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
         for video_id in list(video_ids):
             print('1', video_id)
