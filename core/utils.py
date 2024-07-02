@@ -34,8 +34,14 @@ class OperateDB:
         self.cursor = self.conn.cursor()
 
     def fetch_existing_ids(self)  -> Set[str]:
-        self.cursor.execute("SELECT id FROM videos")
-        existing_ids = {row[0] for row in self.cursor.fetchall()}
+        try:
+            self.cursor.execute("SELECT id FROM videos")
+            existing_ids = {row[0] for row in self.cursor.fetchall()}
+        except sqlite3.OperationalError as e:
+            if 'no such table' in str(e):
+                existing_ids = set()
+            else:
+                raise
         return existing_ids
     
     def save_new_yt_info(self, videos_info):
