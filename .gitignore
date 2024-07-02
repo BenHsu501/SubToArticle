@@ -4,3 +4,5 @@ __pycache__
 subtitles
 download_subtitle.py
 output/*
+htmlcov
+.coverage

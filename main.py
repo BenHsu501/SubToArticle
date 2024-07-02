@@ -12,7 +12,7 @@ def main():
                     choices=["full_process", "fetch_video_id", 'download_subtitle', 'generate_article'], 
                     help="Select the mode of operation. The mode 'full_process' runs through all three stages: fetch_video_id, download_subtitle, and generate_article. The other three modes execute each stage individually.")
     parser.add_argument("--download_mode", choices=['video_id', 'playlist'], type=str, default='video_id', help = '')
-    parser.add_argument("--subtitle_source", choices=['mp3', 'subtitle', 'both'], type=str, default='both',
+    parser.add_argument("--subtitle_source", choices=['mp3', 'subtitle', 'both'], type=str, default='mp3',
         help="Specify the source of subtitles. 'mp3': Subtitles are generated from the Whisper-extracted MP3 file. 'subtitle': Subtitles are fetched from YouTube. 'both': If YouTube does not provide subtitles, generate them from the MP3 file.")
 
     parser.add_argument("--channel_url", type=str, default='https://www.youtube.com/@benhsu501')
@@ -23,21 +23,15 @@ def main():
     if args.mode == "fetch_video_id":
         channel_url = args.channel_url
 
-        # 抓取 yt playlist
         videos_info = fetch_youtube_playlist(channel_url)
         
-        # 查看抓下來的數據是否已經存在 db
         db = OperateDB()
         existing_ids = db.fetch_existing_ids()
-
-        # 判斷哪些數據需要加入資料庫
         new_videos, existing_videos = classify_videos(videos_info, existing_ids)
 
-        # 列印已存在的影片資料
         print("新的影片資料：")
         for video in new_videos:
             print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
-
         print("已存在的影片資料：")
         for video in existing_videos:
             print(f"ID: {video['id']}, 作者: {video['playlist_uploader_id']}, 標題: {video.get('title', '無標題')}")
@@ -46,10 +40,10 @@ def main():
         db.close()
 
     if args.mode == "download_subtitle" and args.download_mode == 'video_id':
-        client = MediaOperations(channel_url = '', mode = args.subtitle_source)
-        client.download_subtitles(args.video_ids)
+        client = MediaOperations(channel_url = '', download_mode = args.subtitle_source)
+        client.download_subtitles(args.video_id)
         
-
+#https://youtube.com/shorts/GBg-DZwgGkA
     # =================== To be modified below
         
     if args.mode == "download_playlist_subtitle":

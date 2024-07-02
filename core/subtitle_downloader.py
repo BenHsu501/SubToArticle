@@ -9,7 +9,7 @@ class MediaOperations:
 
     def download_audio_and_transcribe(self, video_id: str):
         downloader = MediaDownloader()
-        downloader.downlaod_audio(video_id=video_id, download_type='mp3')
+        downloader.download_audio(video_id=video_id, download_type='mp3')
         client = WhisperRecognizer()
         result = client.transcribe_audio(video_id)
         return result
