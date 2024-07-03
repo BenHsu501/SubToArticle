@@ -3,6 +3,8 @@ import unittest
 from core.utils import fetch_youtube_playlist, OperateDB
 from unittest.mock import patch
 import sqlite3
+from unittest.mock import MagicMock
+
 # coverage run --source=core.utils -m unittest discover -s test
 # coverage report
 # coverage html
@@ -85,18 +87,55 @@ class TestOperateDB(unittest.TestCase):
         self.db.cursor.execute("DROP TABLE IF EXISTS videos")
         existing_ids = self.db.fetch_existing_ids()
         self.assertEqual(len(existing_ids), 0)
-    '''
+
+    def test_fetch_existing_ids_other_operational_error(self):
+        # 创建一个 MagicMock 对象来模拟 cursor
+        mock_cursor = MagicMock()
+        # 配置 mock_cursor 在 execute 调用时抛出 sqlite3.OperationalError 异常
+        mock_cursor.execute.side_effect = sqlite3.OperationalError('some other error')
+
+        # 使用 mock_cursor 替换 self.db.cursor
+        self.db.cursor = mock_cursor
+
+        with self.assertRaises(sqlite3.OperationalError):
+            self.db.fetch_existing_ids()
+
+
     def test_save_new_yt_info(self):
         # Positive test case
-        videos_info = [{'id': '1', 'title': 'Test Video 1'}, {'id': '2', 'title': 'Test Video 2'}]
+        videos_info = [{'id': 'Test Video2',
+            'title': 1,
+            'url': 'http://test.com' ,
+            'description': 'test',
+            'duration': 1,
+            'view_count': 1,
+            'webpage_url': 'test',
+            'webpage_url_domain': 'test',
+            'extractor': 'test',
+            'playlist_title': 'test',
+            'playlist_id': 'test',
+            'playlist_uploader': 'test',
+            'playlist_uploader_id': 'test',
+            'n_entries': 1,
+            'duration_string': 'test',
+            'upload_date': 'test',
+            'has_subtitles': 'No',
+            'type_subtitle': 'No',
+            'has_address_subtitles': 'No',
+            'has_generated_article': 'No',
+            'has_uploaded_article': 'No'}]
+        expected = {'test_video_id', 'Test Video2'}
         self.db.save_new_yt_info(videos_info)
         existing_ids = self.db.fetch_existing_ids()
-        self.assertEqual(len(existing_ids), 2)
+        self.assertEqual(set(existing_ids), expected)
 
         # Negative test case - Duplicate video ID
-        with self.assertRaises(sqlite3.IntegrityError):
-            self.db.save_new_yt_info(videos_info)
-
+        videos_info[0]['title'] = '2'
+        self.db.save_new_yt_info(videos_info)
+        c = self.db.conn.cursor()
+        result = c.execute("SELECT title FROM videos WHERE id='Test Video2'")
+        self.assertEqual('2', result.fetchone()[0])
+    
     def test_get_video_ids(self):
         # Positive test case
         conditions = {'has_subtitles': 'No'}
@@ -106,7 +145,7 @@ class TestOperateDB(unittest.TestCase):
         # Negative test case - Invalid conditions
         with self.assertRaises(ValueError):
             self.db.get_video_ids({})
-
+    
     def test_update_value(self):
         # Positive test case
         self.db.cursor.execute("INSERT INTO videos (id, has_subtitles) VALUES ('1', 'No')")
@@ -117,5 +156,14 @@ class TestOperateDB(unittest.TestCase):
 
         # Negative test case - Non-existent ID
         with self.assertRaises(sqlite3.Error):
-            self.db.update_value('100', 'has_subtitles', 'Yes')
-'''
+            self.db.update_value('100', 'has_sutitles', 'Yes')
+    def test_close(self):
+        # Test the close method
+        self.db.close()
+        
+        # Verify that the cursor and connection are closed
+        with self.assertRaises(sqlite3.ProgrammingError):
+            self.db.cursor.execute("SELECT 1")
+        
+        with self.assertRaises(sqlite3.ProgrammingError):
+            self.db.conn.execute("SELECT 1")
