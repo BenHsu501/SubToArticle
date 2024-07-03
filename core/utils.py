@@ -228,15 +228,16 @@ class MediaDownloader:
                 if len(manual_subs) > 0:
                     # 有可能仍沒有字幕
                     return manual_subs, 'manual'
-            if '[info] Available automatic captions' in list_result.stdout:
+            elif '[info] Available automatic captions' in list_result.stdout:
                 _split = list_result_split_by_subtitletype[0].split('\n')
                 automatic_subs = [index.split(' ')[0] for index in _split if 'vtt' in index]
                 # automatic_subs = re.findall(r'^([a-zA-Z-]{2,10})\s+.*?\s+vtt', 
                 #                             list_result_split_by_subtitletype[0], re.MULTILINE)
-                if len(automatic_subs) > 1:
+                if len(automatic_subs) >= 1:
                     # 有可能仍沒有字幕
                     return automatic_subs, 'auto'
-            ValueError("Check another situation.")    
+            else:
+                raise ValueError("Check another situation.")    
         else:
             return None, None
 

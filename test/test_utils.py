@@ -1,6 +1,5 @@
-import core
 import unittest
-from core.utils import fetch_youtube_playlist, OperateDB
+from core.utils import fetch_youtube_playlist, OperateDB, classify_videos, MediaDownloader
 from unittest.mock import patch
 import sqlite3
 from unittest.mock import MagicMock
@@ -36,7 +35,7 @@ class TestFetchYoutubePlaylist(unittest.TestCase):
 
 class TestOperateDB(unittest.TestCase):
     def setUp(self) -> None:
-        self.db = OperateDB(':memory')
+        self.db = OperateDB(':memory:')
         self.create_and_populate_table()
     
     def create_and_populate_table(self):
@@ -167,3 +166,120 @@ class TestOperateDB(unittest.TestCase):
         
         with self.assertRaises(sqlite3.ProgrammingError):
             self.db.conn.execute("SELECT 1")
+
+class TestClassifyVideos(unittest.TestCase):
+
+    def test_positive_case(self):
+        new_videos = [{'id': '1', 'title': 'Video 1'}, {'id': '2', 'title': 'Video 2'}]
+        existing_ids = {'2', '3'}
+        new_data, existing_data = classify_videos(new_videos, existing_ids)
+        self.assertEqual(new_data, [{'id': '1', 'title': 'Video 1'}])
+        self.assertEqual(existing_data, [{'id': '2', 'title': 'Video 2'}])
+
+    def test_negative_case(self):
+        new_videos = [{'id': '3', 'title': 'Video 3'}, {'id': '4', 'title': 'Video 4'}]
+        existing_ids = {'1', '2'}
+        new_data, existing_data = classify_videos(new_videos, existing_ids)
+        self.assertEqual(new_data, [{'id': '3', 'title': 'Video 3'}, {'id': '4', 'title': 'Video 4'}])
+        self.assertEqual(existing_data, [])
+
+    def test_empty_input(self):
+        new_videos = []
+        existing_ids = {'1', '2'}
+        new_data, existing_data = classify_videos(new_videos, existing_ids)
+        self.assertEqual(new_data, [])
+        self.assertEqual(existing_data, [])
+
+class TestMediaDownloader(unittest.TestCase):
+
+    def test_select_subtitle_lang_positive(self):
+        downloader = MediaDownloader()
+        subtitles = ['en', 'zh-TW', 'es']
+        result = downloader.select_subtitle_lang(subtitles)
+        self.assertEqual(result, 'en')
+
+    def test_select_subtitle_lang_negative(self):
+        downloader = MediaDownloader()
+        subtitles = ['fr', 'de', 'it']
+        result = downloader.select_subtitle_lang(subtitles)
+        self.assertEqual('fr', result)
+
+    @patch('subprocess.run')
+    def test_check_subtitle_available_case1(self, mock_subprocess):
+        mock_result = MagicMock()
+        mock_result.stdout = ""
+        mock_result.returncode = 1
+        mock_subprocess.return_value = mock_result
+        
+        downloader = MediaDownloader()
+        manual_subs, subtitle_type = downloader.check_subtitle_available('video_id', 1)
+        
+        self.assertEqual(manual_subs, None)
+        self.assertEqual(subtitle_type, None)
+    
+    @patch('subprocess.run')
+    def test_check_subtitle_available_case2(self, mock_subprocess):
+        mock_result = MagicMock()
+        mock_result.stdout = "[info] Available subtitles for cPdVWtRFDqw:\nLanguage      Name                                        Formats\nzh-TW                                                     vtt\nen                                                       vtt"
+        mock_result.returncode = 0
+        mock_subprocess.return_value = mock_result
+        
+        downloader = MediaDownloader()
+        manual_subs, subtitle_type = downloader.check_subtitle_available('video_id', 1)
+        
+        self.assertEqual(manual_subs, ['zh-TW', 'en'])
+        self.assertEqual(subtitle_type, 'manual')
+
+    @patch('subprocess.run')
+    def test_check_subtitle_available_case3(self, mock_subprocess):
+        mock_result = MagicMock()
+        mock_result.stdout = "[info] Available automatic captions for oyvLXWEzcdM:\nLanguage               Name                                                          Formats\nen                     English, English, English, English, English, English, unknown vtt, ttml, srv3, srv2, srv1, json3, vtt"
+        mock_result.returncode = 0
+        mock_subprocess.return_value = mock_result
+
+        downloader = MediaDownloader()
+        manual_subs, subtitle_type = downloader.check_subtitle_available('video_id', 1)
+        self.assertEqual(manual_subs, ['en'])
+        self.assertEqual(subtitle_type, 'auto')
+    
+    @patch('subprocess.run')
+    def test_check_subtitle_available_case4(self, mock_subprocess):
+        mock_result = MagicMock()
+        mock_result.stdout = "vtt"
+        mock_result.returncode = 0
+        mock_subprocess.return_value = mock_result
+
+        downloader = MediaDownloader()
+        with self.assertRaises(ValueError):
+            downloader.check_subtitle_available('video_id', 1)
+
+    @patch('subprocess.run')
+    def test_check_subtitle_available_case5(self, mock_subprocess):
+        mock_result = MagicMock()
+        mock_result.stdout = "Checking subtitles for video ID GBg-DZwgGkA\nList Subtitles Output:[youtube] Extracting URL: https://www.youtube.com/watch?v=GBg-DZwgGkA\n[youtube] GBg-DZwgGkA: Downloading webpage\n[youtube] GBg-DZwgGkA: Downloading ios player API JSON\n[youtube] GBg-DZwgGkA: Downloading android player API JSON\n[youtube] GBg-DZwgGkA: Downloading m3u8 information\nGBg-DZwgGkA has no automatic captions\nGBg-DZwgGkA has no subtitles\n"
+        mock_result.returncode = 0
+        mock_subprocess.return_value = mock_result
+
+        downloader = MediaDownloader()
+        manual_subs, subtitle_type = downloader.check_subtitle_available('video_id', 1)
+        self.assertEqual(manual_subs, None)
+        self.assertEqual(subtitle_type, None)
+
+
+
+       
+    '''
+    @patch('subprocess.run')
+    def test_download_audio_subtitle_positive(self, mock_subprocess):
+        mock_subprocess.return_value.returncode = 0
+        downloader = MediaDownloader()
+        result = downloader.download_audio('video_id', download_type='subtitle', download_lang='en', subtitle_type='manual')
+        self.assertEqual(result.returncode, 0)
+
+    @patch('subprocess.run')
+    def test_download_audio_subtitle_negative(self, mock_subprocess):
+        mock_subprocess.return_value.returncode = 1
+        downloader = MediaDownloader()
+        result = downloader.download_audio('video_id', download_type='subtitle', download_lang='en', subtitle_type='manual')
+        self.assertNotEqual(result.returncode, 0)
+'''
