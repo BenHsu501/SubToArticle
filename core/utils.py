@@ -161,34 +161,35 @@ class MediaDownloader:
 
     def check_and_download_subtitles(self, video_ids:List[str], mode:int) -> None:
         db = OperateDB()  
-        for video_id in video_ids:
-            # check subtilte
-            manual_subs, subtitle_type = self.check_subtitle_available(video_id, mode)
-            print(video_id, manual_subs, subtitle_type)
-            # select_subtitle_lang
-            download_lang = None
-            if not manual_subs is None:
-                download_lang = self.select_subtitle_lang(manual_subs)
-            
-            # 字幕下載
-            if download_lang:
-                download_result = self.download_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
-                if download_result.returncode == 0:
-                    self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
-                    db.update_value(video_id, 'has_subtitles', 'Done')
-                    return {'state': 'Done'}
+        try:
+            for video_id in video_ids:
+                # check subtilte
+                manual_subs, subtitle_type = self.check_subtitle_available(video_id, mode)
+                print(video_id, manual_subs, subtitle_type)
+                # select_subtitle_lang
+                download_lang = None
+                if not manual_subs is None:
+                    download_lang = self.select_subtitle_lang(manual_subs)
+                
+                # 字幕下載
+                if download_lang:
+                    download_result = self.download_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
+                    if download_result.returncode == 0:
+                        self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
+                        db.update_value(video_id, 'has_subtitles', 'Done')
+                        return {'state': 'Done'}
+                    else:
+                        self.write_log(video_id, "An error occurred while downloading subtitles.\n")
+                        db.update_value(video_id, 'has_subtitles', 'Error')
+                        return {'state': 'Error'}
+
+                    db.update_value(video_id, 'type_subtitle', subtitle_type)
                 else:
-                    self.write_log(video_id, "An error occurred while downloading subtitles.\n")
-                    db.update_value(video_id, 'has_subtitles', 'Error')
-                    return {'state': 'Error'}
-
-                db.update_value(video_id, 'type_subtitle', subtitle_type)
-            else:
-                self.write_log(video_id, "No suitable subtitles were found.\n")
-                db.update_value(video_id, 'has_subtitles', 'NotFound')
-                return {'state': 'NotFound'}
-
-        db.close()
+                    self.write_log(video_id, "No suitable subtitles were found.\n")
+                    db.update_value(video_id, 'has_subtitles', 'NotFound')
+                    return {'state': 'NotFound'}
+        finally:
+            db.close()
 
 
     def select_subtitle_lang(self, subtitles:List[str]):
@@ -272,16 +273,9 @@ class MediaDownloader:
 
 
 class WhisperRecognizer:
-    def __init__(self, api_key: str = None) -> None:
+    def __init__(self) -> None:
         self.client = OpenAI()
-        if api_key:
-            self.client.api_key = api_key
-        else:
-            self.client.api_key = os.environ.get('OPENAI_API_KEY')
-        
-        if not self.client.api_key:
-            raise ValueError("You must provide an OpenAI API key either as a parameter or in the environment variable OPENAI_API_KEY.")
-        
+           
     def transcribe_audio(self, video_id: str) -> str:
         audio_file = f"output/mp3/{video_id}.mp3"
         if not os.path.exists(audio_file):

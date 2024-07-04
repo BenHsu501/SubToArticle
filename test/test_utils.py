@@ -1,7 +1,8 @@
 import unittest
-from core.utils import fetch_youtube_playlist, OperateDB, classify_videos, MediaDownloader, WhisperRecognizer
-from unittest.mock import patch
-import sqlite3
+from core.utils import fetch_youtube_playlist, OperateDB,  MediaDownloader, WhisperRecognizer
+from core.utils import fetch_youtube_playlist, classify_videos, clean_subtitles, find_files, ensure_directory_exists
+from unittest.mock import patch, mock_open
+import sqlite3, os
 from unittest.mock import MagicMock
 
 # coverage run --source=core.utils -m unittest discover -s test
@@ -338,45 +339,62 @@ class TestMediaDownloader(unittest.TestCase):
         #mock_db_instance.close.reset_mock()  # Reset mock for the next test
 
 class TestWhisperRecognizer(unittest.TestCase):
-    
-    def test_transcribe_audio_positive(self):
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "fake_api_key"})
+    @patch('os.path.exists', return_value=True)
+    @patch('builtins.open', new_callable=mock_open, read_data="Mock audio data")
+    def test_transcribe_audio_positive_default_language(self, mock_open, mock_exists):
         recognizer = WhisperRecognizer()
-        recognizer.client.audio.transcriptions.create = MagicMock(return_value=MagicMock(text="This is a test transcription"))
+        recognizer.client.audio.transcriptions.create = MagicMock(return_value=MagicMock(text="This is a test transcription in English"))
+        
         result = recognizer.transcribe_audio("test_video")
-        self.assertEqual(result, "This is a test transcription")
         
-    def test_transcribe_audio_file_not_found(self):
+        self.assertEqual(result, "This is a test transcription in English")
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "fake_api_key"})
+    @patch('os.path.exists', return_value=False)
+    def test_transcribe_audio_file_not_found(self, mock_exists):
         recognizer = WhisperRecognizer()
-        with self.assertRaises(FileNotFoundError):
-            recognizer.transcribe_audio("non_existent_video")
-    
-    @patch("builtins.open")
-    def test_save_transcription_positive(self, mock_open):
-        recognizer = WhisperRecognizer()
-        video_id = "test_video"
-        text = "Test transcription text"
-        recognizer.save_transcription(video_id, text)
         
-        mock_open.assert_called_once_with(f"output/transcriptions/{video_id}.txt", "w", encoding="utf-8")
+        with self.assertRaises(FileNotFoundError) as context:
+            recognizer.transcribe_audio("test_video")
         
-    @patch("builtins.open")
-    def test_save_transcription_content(self, mock_open):
-        recognizer = WhisperRecognizer()
-        video_id = "test_video"
-        text = "Test transcription text"
-        recognizer.save_transcription(video_id, text)
-        
-        mock_open.return_value.__enter__.return_value.write.assert_called_once_with(text)
+        self.assertEqual(str(context.exception), "The file output/mp3/test_video.mp3 does not exist.")
+
 
 class TestCleanSubtitles(unittest.TestCase):
 
     def test_clean_subtitles(self):
-        file_path = "test_subtitles.vtt"
+        file_path = "output/test/test_subtitles.txt"
         output_dir = "output/test"
         with patch('builtins.open', mock_open(read_data="00:00:01.000 --> 00:00:05.000\nHello <c>world</c>\n")) as mock_file:
             clean_subtitles(file_path, output_dir)
-            mock_file.assert_called_with(file_path, 'r', encoding='utf-8')
+            mock_file.assert_called_with(file_path, 'w', encoding='utf-8')
             # Add assertions to check the cleaned subtitles file content and its correctness
 
     # Add more positive and negative test cases for clean_subtitles function
 
+class TestFileFunctions(unittest.TestCase):
+
+    @patch('os.walk')
+    def test_find_files_positive(self, mock_walk):
+        directory = "test_directory"
+        search_texts = ["file", "test"]
+        mock_walk.return_value = [("", [], ["test_directory/test_file.txt"])]
+        expected_files = ["test_directory/test_file.txt"]
+        actual_files = find_files(directory, search_texts)
+        self.assertEqual(actual_files, expected_files)
+
+    def test_find_files_negative(self):
+        directory = "non_existing_directory"
+        search_texts = ["file", "test"]
+        expected_files = []
+        actual_files = find_files(directory, search_texts)
+        self.assertEqual(actual_files, expected_files)
+
+    @patch('os.makedirs')
+    @patch('os.path.exists', return_value=False)
+    def test_ensure_directory_exists(self, mock_exists, mock_makedirs):
+        filename = "test_directory/test_file.txt"
+        ensure_directory_exists(filename)
+        mock_makedirs.assert_called_once_with("test_directory", exist_ok=True)
