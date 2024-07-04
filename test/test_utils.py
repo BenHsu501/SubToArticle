@@ -265,10 +265,6 @@ class TestMediaDownloader(unittest.TestCase):
         self.assertEqual(manual_subs, None)
         self.assertEqual(subtitle_type, None)
 
-
-
-       
-    '''
     @patch('subprocess.run')
     def test_download_audio_subtitle_positive(self, mock_subprocess):
         mock_subprocess.return_value.returncode = 0
@@ -282,4 +278,17 @@ class TestMediaDownloader(unittest.TestCase):
         downloader = MediaDownloader()
         result = downloader.download_audio('video_id', download_type='subtitle', download_lang='en', subtitle_type='manual')
         self.assertNotEqual(result.returncode, 0)
-'''
+    
+    @patch('subprocess.run')
+    def test_download_audio_mp3_positive(self, mock_subprocess):
+        mock_subprocess.return_value.returncode = 0
+        downloader = MediaDownloader()
+        result = downloader.download_audio('video_id', download_type='mp3', download_lang='en', subtitle_type='manual')
+        self.assertEqual(result.returncode, 0)
+
+    @patch('subprocess.run')
+    def test_download_audio_mp3_negative(self, mock_subprocess):
+        mock_subprocess.return_value.returncode = 1
+        downloader = MediaDownloader()
+        result = downloader.download_audio('video_id', download_type='mp3', download_lang='en', subtitle_type='manual')
+        self.assertNotEqual(result.returncode, 0)

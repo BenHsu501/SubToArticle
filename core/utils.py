@@ -261,7 +261,6 @@ class MediaDownloader:
                 '-o', f'{self.output_dir}/{download_type}/%(id)s.%(ext)s',
                 f'https://www.youtube.com/watch?v={video_id}'
             ]
-            print(download_command)
         download_result = subprocess.run(download_command, stdout=None, stderr=None, text=True)
 
         self.write_log(video_id, f"Download {type} Output:\n{download_result.stdout}\nDownload {type} Errors:\n{download_result.stderr}")
