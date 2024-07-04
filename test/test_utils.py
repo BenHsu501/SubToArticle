@@ -1,5 +1,5 @@
 import unittest
-from core.utils import fetch_youtube_playlist, OperateDB, classify_videos, MediaDownloader
+from core.utils import fetch_youtube_playlist, OperateDB, classify_videos, MediaDownloader, WhisperRecognizer
 from unittest.mock import patch
 import sqlite3
 from unittest.mock import MagicMock
@@ -292,3 +292,91 @@ class TestMediaDownloader(unittest.TestCase):
         downloader = MediaDownloader()
         result = downloader.download_audio('video_id', download_type='mp3', download_lang='en', subtitle_type='manual')
         self.assertNotEqual(result.returncode, 0)
+
+    @patch('core.utils.OperateDB')
+    @patch('core.utils.MediaDownloader.download_audio')
+    @patch('core.utils.MediaDownloader.select_subtitle_lang')
+    @patch('core.utils.MediaDownloader.check_subtitle_available')
+    def test_check_and_download_subtitles(self, mock_check_subtitle_available, mock_select_subtitle_lang, mock_download_audio, mock_operate_db):
+        self.downloader = MediaDownloader()
+        # Mock OperateDB instance
+        mock_db_instance = MagicMock()
+        mock_operate_db.return_value = mock_db_instance
+
+        # Mock methods in MediaDownloader
+        mock_check_subtitle_available.side_effect = [
+            (['en'], 'manual'),
+            (['en'], 'manual')
+        ]
+        mock_select_subtitle_lang.return_value = 'en'
+        mock_download_audio.return_value = MagicMock(returncode=0)
+
+        # Define the video IDs for the test
+        video_ids = ['video1', 'video2']
+
+        # Execute the method under test
+        result = self.downloader.check_and_download_subtitles(video_ids, 1)
+        # Assertions
+        self.assertEqual(result, {'state': 'Done'})
+        #mock_db_instance.close.assert_called_once()
+        #mock_db_instance.close.reset_mock()  # Reset mock for the next test
+
+        mock_download_audio.return_value = MagicMock(returncode=1)
+        result = self.downloader.check_and_download_subtitles(video_ids, 1)
+        self.assertEqual(result, {'state': 'Error'})
+        #mock_db_instance.close.assert_called_once()
+        #mock_db_instance.close.reset_mock()  # Reset mock for the next test
+
+        mock_check_subtitle_available.side_effect = [
+            (['en'], 'manual'),
+            (['en'], 'manual')
+        ]
+        mock_select_subtitle_lang.return_value = None
+        result = self.downloader.check_and_download_subtitles(video_ids, 1)
+        self.assertEqual(result, {'state': 'NotFound'})
+        #mock_db_instance.close.assert_called_once()
+        #mock_db_instance.close.reset_mock()  # Reset mock for the next test
+
+class TestWhisperRecognizer(unittest.TestCase):
+    
+    def test_transcribe_audio_positive(self):
+        recognizer = WhisperRecognizer()
+        recognizer.client.audio.transcriptions.create = MagicMock(return_value=MagicMock(text="This is a test transcription"))
+        result = recognizer.transcribe_audio("test_video")
+        self.assertEqual(result, "This is a test transcription")
+        
+    def test_transcribe_audio_file_not_found(self):
+        recognizer = WhisperRecognizer()
+        with self.assertRaises(FileNotFoundError):
+            recognizer.transcribe_audio("non_existent_video")
+    
+    @patch("builtins.open")
+    def test_save_transcription_positive(self, mock_open):
+        recognizer = WhisperRecognizer()
+        video_id = "test_video"
+        text = "Test transcription text"
+        recognizer.save_transcription(video_id, text)
+        
+        mock_open.assert_called_once_with(f"output/transcriptions/{video_id}.txt", "w", encoding="utf-8")
+        
+    @patch("builtins.open")
+    def test_save_transcription_content(self, mock_open):
+        recognizer = WhisperRecognizer()
+        video_id = "test_video"
+        text = "Test transcription text"
+        recognizer.save_transcription(video_id, text)
+        
+        mock_open.return_value.__enter__.return_value.write.assert_called_once_with(text)
+
+class TestCleanSubtitles(unittest.TestCase):
+
+    def test_clean_subtitles(self):
+        file_path = "test_subtitles.vtt"
+        output_dir = "output/test"
+        with patch('builtins.open', mock_open(read_data="00:00:01.000 --> 00:00:05.000\nHello <c>world</c>\n")) as mock_file:
+            clean_subtitles(file_path, output_dir)
+            mock_file.assert_called_with(file_path, 'r', encoding='utf-8')
+            # Add assertions to check the cleaned subtitles file content and its correctness
+
+    # Add more positive and negative test cases for clean_subtitles function
+
