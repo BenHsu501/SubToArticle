@@ -9,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
     
     parser.add_argument("--mode", default='full_process',  
-                    choices=["full_process", "fetch_video_id", 'download_subtitle', 'generate_article'], 
+                    choices=["full_process", "fetch_video_id", 'download_subtitle', 'generate_article', 'test'], 
                     help="Select the mode of operation. The mode 'full_process' runs through all three stages: fetch_video_id, download_subtitle, and generate_article. The other three modes execute each stage individually.")
     parser.add_argument("--download_mode", choices=['video_id', 'playlist'], type=str, default='video_id', help = '')
     parser.add_argument("--subtitle_source", choices=['mp3', 'subtitle', 'both'], type=str, default='mp3',
@@ -97,6 +97,11 @@ def main():
         1
     if args.mode == 'test':
         print(args.video_id)
+        from core.subtitle_downloader import MediaOperations
+        test = MediaOperations("")
+        #test.download_single_subtitles("test_id", download_mode = 'subtitle')
+        test.download_audio_and_transcribe('OZmoqGIjWus')
+        
         # ownloader = MediaDownloader()
         # downloader.check_and_download_subtitles(['OZmoqGIjWus'], 0)
         # id = 'GBg-DZwgGkA'

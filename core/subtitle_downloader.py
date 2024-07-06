@@ -2,14 +2,16 @@ from core.utils import  OperateDB, MediaDownloader, WhisperRecognizer
 from typing import List
 
 class MediaOperations:
-    def __init__(self, channel_url: str, output_dir: str = 'output/', download_mode: str = 'mp3'):
+    def __init__(self, channel_url: str = '', output_dir: str = 'output/', download_mode: str = 'mp3'):
         self.channel_url = channel_url
         self.output_dir = output_dir
         self.download_mode = download_mode
 
     def download_audio_and_transcribe(self, video_id: str):
+        
         downloader = MediaDownloader()
         downloader.download_audio(video_id=video_id, download_type='mp3')
+        #breakpoint()
         client = WhisperRecognizer()
         result = client.transcribe_audio(video_id)
         return result
@@ -20,7 +22,7 @@ class MediaOperations:
 
         if download_mode in ['subtitle', 'both']:
             state_result = downloader.check_and_download_subtitles(video_id, 0)
-            
+            print(state_result)
             if download_mode == 'both' and state_result['state'] in ['NotFound' in 'Error']:
                 result = self.download_audio_and_transcribe(video_id)
 
