@@ -23,12 +23,14 @@ class MediaOperations:
         if download_mode in ['subtitle', 'both']:
             state_result = downloader.check_and_download_subtitles(video_id, 0)
             print(state_result)
-            if download_mode == 'both' and state_result['state'] in ['NotFound' in 'Error']:
+            if download_mode == 'both' and state_result['state'] in ['NotFound', 'Error']:
                 result = self.download_audio_and_transcribe(video_id)
 
         if download_mode == 'mp3':
             result = self.download_audio_and_transcribe(video_id)
-
+        
+        return(result)
+    
     def download_subtitles(self, video_ids:List):
         if not isinstance(video_ids, list):
             video_ids = [video_ids]
