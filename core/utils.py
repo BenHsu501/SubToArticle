@@ -35,7 +35,7 @@ class OperateDB:
 
     def fetch_existing_ids(self)  -> Set[str]:
         try:
-            self.cursor.execute("SELECT id FROM videos")
+            self.cursor.execute("SELECT id FROM videos;")
             existing_ids = {row[0] for row in self.cursor.fetchall()}
         except sqlite3.OperationalError as e:
             if 'no such table' in str(e):
@@ -159,35 +159,35 @@ class MediaDownloader:
         now_time = '{:%y%m%d_%H%M%S%}'.format(datetime.now())
         self.log_path = f'{self.output_dir}/subtitles/{now_time}_yt_dlp_logs.txt'
 
-    def check_and_download_subtitles(self, video_ids:List[str], mode:int) -> None:
+    def check_and_download_subtitles(self, video_id:str, mode:int) -> None:
         db = OperateDB()  
         try:
-            for video_id in video_ids:
-                # check subtilte
-                manual_subs, subtitle_type = self.check_subtitle_available(video_id, mode)
-                print(video_id, manual_subs, subtitle_type)
-                # select_subtitle_lang
-                download_lang = None
-                if not manual_subs is None:
-                    download_lang = self.select_subtitle_lang(manual_subs)
-                
-                # 字幕下載
-                if download_lang:
-                    download_result = self.download_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
-                    if download_result.returncode == 0:
-                        self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
-                        db.update_value(video_id, 'has_subtitles', 'Done')
-                        return {'state': 'Done'}
-                    else:
-                        self.write_log(video_id, "An error occurred while downloading subtitles.\n")
-                        db.update_value(video_id, 'has_subtitles', 'Error')
-                        return {'state': 'Error'}
-
-                    db.update_value(video_id, 'type_subtitle', subtitle_type)
+            #for video_id in video_ids:
+            # check subtilte
+            manual_subs, subtitle_type = self.check_subtitle_available(video_id, mode)
+            print(video_id, manual_subs, subtitle_type)
+            # select_subtitle_lang
+            download_lang = None
+            if not manual_subs is None:
+                download_lang = self.select_subtitle_lang(manual_subs)
+            
+            # 字幕下載
+            if download_lang:
+                download_result = self.download_audio(download_lang = download_lang, video_id = video_id, subtitle_type = subtitle_type)
+                if download_result.returncode == 0:
+                    self.write_log(video_id, f"{download_lang} subtitles downloaded successfully.\n")
+                    db.update_value(video_id, 'has_subtitles', 'Done')
+                    return {'state': 'Done'}
                 else:
-                    self.write_log(video_id, "No suitable subtitles were found.\n")
-                    db.update_value(video_id, 'has_subtitles', 'NotFound')
-                    return {'state': 'NotFound'}
+                    self.write_log(video_id, "An error occurred while downloading subtitles.\n")
+                    db.update_value(video_id, 'has_subtitles', 'Error')
+                    return {'state': 'Error'}
+
+                db.update_value(video_id, 'type_subtitle', subtitle_type)
+            else:
+                self.write_log(video_id, "No suitable subtitles were found.\n")
+                db.update_value(video_id, 'has_subtitles', 'NotFound')
+                return {'state': 'NotFound'}
         finally:
             db.close()
 
@@ -243,6 +243,7 @@ class MediaDownloader:
             return None, None
 
     def download_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
+        breakpoint()
         if download_type == 'subtitle':
             sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
             download_command = [
@@ -296,6 +297,13 @@ class WhisperRecognizer:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"Transcription saved to {output_path}")
+        db = OperateDB()
+        db.update_value(video_id, 'has_address_subtitles', 'Done')
+        db.close()
+        print("The variable has_address_subtitles has been updated in the database.")
+
+
+        
 
 
 def clean_subtitles(file_path:str, output_dir:str = 'output/adress_subtitles') -> None:

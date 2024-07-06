@@ -6,6 +6,9 @@ from openai import OpenAI
 import CopyCraftAPI.utils as CopyCraftAPI
 
 def main():
+
+    from core.subtitle_downloader import MediaOperations
+
     parser = argparse.ArgumentParser(description="Data Fetching Operations")
     
     parser.add_argument("--mode", default='full_process',  
@@ -47,14 +50,24 @@ def main():
     
     if args.mode == "download_subtitle" and args.download_mode == 'playlist':
         db = OperateDB()
+        #breakpoint()
+        # video_ids = db.get_video_ids(conditions = {'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
+        video_ids = db.get_video_ids(conditions = {'has_subtitles': 'Done', 'has_address_subtitles': 'No'})
+        from core.subtitle_downloader import MediaOperations
+        client = MediaOperations(channel_url=args.channel_url, 
+                                 output_dir=args.output_path, 
+                                 download_mode=args.subtitle_source)
+        client.download_subtitles(list(video_ids))
         
-
-
-
-'''
-#https://youtube.com/shorts/GBg-DZwgGkA
-    # =================== To be modified below
         
+    
+    if args.mode == "test":
+        client = MediaOperations(download_mode='subtitle')
+        breakpoint()
+        client.download_subtitles('cPdVWtRFDqw')
+        db = OperateDB()
+
+
     if args.mode == "download_playlist_subtitle":
         
         db = OperateDB()
@@ -84,7 +97,7 @@ def main():
 
         if args.download_mode in ['subtitle', 'both']:
             state_result = downloader.check_and_download_subtitles(video_id, 0)
-            
+                
             if args.download_mode == 'both' and state_result['state'] == 'NotFound':
                 downloader.downlaod_audio(video_id = video_id, download_type = 'mp3')
                 client = WhisperRecognizer()
@@ -104,9 +117,8 @@ def main():
 
     if args.mode == 'create_article':
         1
-    if args.mode == 'test':
+    if args.mode == 'test2':
         print(args.video_id)
-        from core.subtitle_downloader import MediaOperations
         test = MediaOperations("")
         #test.download_single_subtitles("test_id", download_mode = 'subtitle')
         test.download_audio_and_transcribe('OZmoqGIjWus')
@@ -124,8 +136,8 @@ def main():
         #    model="whisper-1", 
         #    file=audio_file
         #)
-        #print(transcription.text)   
-'''
+     #print(transcription.text)   
+
 if __name__ == "__main__":
     main()
 
