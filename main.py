@@ -20,11 +20,9 @@ def main():
     parser.add_argument("--video_id", type=str, nargs='+', help="One or more video IDs")
 
     args = parser.parse_args()
-    if args.mode == "fetch_video_id":
-        channel_url = args.channel_url
 
-        videos_info = fetch_youtube_playlist(channel_url)
-        
+    if args.mode == "fetch_video_id":
+        videos_info = fetch_youtube_playlist(args.channel_url)
         db = OperateDB()
         existing_ids = db.fetch_existing_ids()
         new_videos, existing_videos = classify_videos(videos_info, existing_ids)
@@ -38,11 +36,22 @@ def main():
 
         db.save_new_yt_info(new_videos)
         db.close()
+        
 
     if args.mode == "download_subtitle" and args.download_mode == 'video_id':
-        client = MediaOperations(channel_url = '', download_mode = args.subtitle_source)
+        from core.subtitle_downloader import MediaOperations
+        client = MediaOperations(channel_url=args.channel_url, 
+                                 output_dir=args.output_path, 
+                                 download_mode=args.subtitle_source)
         client.download_subtitles(args.video_id)
+    
+    if args.mode == "download_subtitle" and args.download_mode == 'playlist':
+        db = OperateDB()
         
+
+
+
+'''
 #https://youtube.com/shorts/GBg-DZwgGkA
     # =================== To be modified below
         
@@ -116,7 +125,7 @@ def main():
         #    file=audio_file
         #)
         #print(transcription.text)   
-
+'''
 if __name__ == "__main__":
     main()
 

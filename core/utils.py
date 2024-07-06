@@ -262,8 +262,9 @@ class MediaDownloader:
                 '-o', f'{self.output_dir}/{download_type}/%(id)s.%(ext)s',
                 f'https://www.youtube.com/watch?v={video_id}'
             ]
-        download_result = subprocess.run(download_command, stdout=None, stderr=None, text=True)
-
+        download_result = subprocess.run(download_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        _info = download_result.stderr if download_result.stderr else 'Downloading'
+        print('Audio    mode:', video_id, _info)
         self.write_log(video_id, f"Download {type} Output:\n{download_result.stdout}\nDownload {type} Errors:\n{download_result.stderr}")
         return download_result
 
