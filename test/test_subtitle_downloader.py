@@ -48,7 +48,22 @@ class TestMediaOperations(unittest.TestCase):
             mock_db_instance.update_value.assert_called_once_with('test_video_id', 'has_address_subtitles', 'Done')
             mock_db_instance.close.assert_called_once()
 
-    
+    @patch('core.subtitle_downloader.MediaDownloader')
+    @patch('core.subtitle_downloader.OperateDB')
+    @patch('core.subtitle_downloader.find_files')
+    @patch('core.subtitle_downloader.clean_subtitles')
+    def test_download_single_subtitles_subtitle(self, mock_clean_subtitles, mock_find_files, mock_operate_db, mock_downloader):
+        mock_downloader_instance = mock_downloader.return_value
+        mock_downloader_instance.check_and_download_subtitles.return_value = {'state': 'Done'}
+        result = self.media_ops.download_single_subtitles('test_video_id', download_mode = 'subtitle')
+
+        mock_db_instance = mock_operate_db.return_value
+        mock_find_files.assert_called_once_with('test_output//subtitle', ['test_video_id', 'vtt'])
+        #mock_clean_subtitles.assert_called_once_with(file_path='output/subtitle/test_video_id.vtt', output_dir='output/adress_subtitles')
+        mock_db_instance.close.assert_called_once()
+
+
+
     @patch.object(MediaOperations, 'download_audio_and_transcribe')
     @patch('core.subtitle_downloader.MediaDownloader')
     def test_download_single_subtitles_both(self, mock_downloader, mock_download_audio_and_transcribe):
