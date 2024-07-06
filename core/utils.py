@@ -243,7 +243,6 @@ class MediaDownloader:
             return None, None
 
     def download_audio(self, video_id:str, download_type:str = 'subtitle', download_lang:str = 'en', subtitle_type:int = 'manual'):
-        breakpoint()
         if download_type == 'subtitle':
             sub_command = '--write-sub' if subtitle_type == 'manual' else '--write-auto-sub'
             download_command = [

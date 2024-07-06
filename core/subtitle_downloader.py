@@ -25,8 +25,8 @@ class MediaOperations:
             state_result = downloader.check_and_download_subtitles(video_id, 0)
             print('Subtitle mode:', video_id, state_result['state'])
             if state_result['state'] == 'Done':
-                input_path = self.output_dir + '/subtitles' 
-                output_path = self.output_dir + '/adress_subtitles'
+                input_path = self.output_dir + '/subtitle' 
+                output_path = self.output_dir + '/adress_subtitle'
                 matched_files = find_files(input_path, [video_id, 'vtt'])
                 clean_subtitles(file_path = matched_files[0],
                                  output_dir = output_path)

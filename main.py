@@ -57,13 +57,14 @@ def main():
         client = MediaOperations(channel_url=args.channel_url, 
                                  output_dir=args.output_path, 
                                  download_mode=args.subtitle_source)
+        #breakpoint()
         client.download_subtitles(list(video_ids))
         
         
     
     if args.mode == "test":
         client = MediaOperations(download_mode='subtitle')
-        breakpoint()
+        # breakpoint()
         client.download_subtitles('cPdVWtRFDqw')
         db = OperateDB()
 
