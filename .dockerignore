@@ -1,0 +1,6 @@
+.git
+.DS_Store
+.coverage
+download_subtitle.py
+htmlcov
+output/

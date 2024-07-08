@@ -24,7 +24,7 @@ def step_generate_article(args):
     return response_content_list
 
 def save_articles(result, output_path, video_ids):
-    directory = os.path.join(output_path, 'article')
+    directory = os.path.join(output_path, 'article/')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
