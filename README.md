@@ -1,5 +1,11 @@
 # SubToArticle
 [中文閱讀](docs/README_ZH.md)
+## How to use it in two steps？
+### Step 1: Copy the youtube video ID you are interested in.
+![**Alt text**](docs/image/get_video_id.png)
+### Step 2: Get your article via script
+![**All text**](docs/image/run_script.gif)
+
 ## Introduction
 Do you often bookmark countless video links only to never open them again? Are these videos too lengthy, making it difficult to find time to watch? These deterrents can cause you to miss out on crucial information. In this project, you can batch download subtitles from specific YouTubers and generate articles from them, allowing you to quickly absorb information. This way, you can stay informed without spending hours watching videos.
 ## Features
