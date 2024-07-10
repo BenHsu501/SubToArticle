@@ -23,41 +23,17 @@ Do you often bookmark countless video links only to never open them again? Are t
 
 ## Installation
 ### Local install
-1. Clone the repository:
+1. Pull a docker image from docker hub:
 
    ```bash
-   git clone https://github.com/BenHsu501/SubToArticle.git
-   cd SubToArticle
+    docker pull benjiminhsu/subtoarticle:1.0.6
    ```
 
-2. Install dependencies:
+2. Run a docker image as a container
     ```sh
-    pip install -r requirements.txt
-    pip install git+https://github.com/BenHsu501/CopyCraftAPI.git
+    docker run -it --env OPENAI_API_KEY=<your_api_key> subtoarticle:1.0.6 bash
+
     ```
-
-3. Install sqlite and ffmpeg
-    ```sh
-    apt-get update && apt-get install -y sqlite3 ffmpeg
-    ```
-
-### Build docker image
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/BenHsu501/SubToArticle.git
-   cd SubToArticle
-   ```
-
-2. Build docker image
-    ```
-    docker build -t  subtoarticle . --no-cache
-    ```
-
-```
-docker run -it --env OPENAI_API_KEY=<your_api_key> --name app subtoarticle:1.0.0 bash
-```
 
 ## Usage
 

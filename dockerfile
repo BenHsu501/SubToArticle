@@ -1,6 +1,5 @@
 # 使用官方 Python 映像作為基礎映像
-# FROM python:latest
-FROM subtoarticle:1.0.1
+FROM python:latest
 
 # 設置工作目錄
 WORKDIR /app
@@ -14,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# 執行初始化腳本
+RUN python sql/schema.py && python sql/data.py
 
 # 定義容器啟動時執行的命令
 # CMD ["python", "yourscript.py"]

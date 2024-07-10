@@ -323,7 +323,9 @@ class MediaDownloader:
         return download_result
 
     def write_log(self, video_id:str, message:str) -> None:
-        with open(f'output/subtitles/{video_id}_logs.txt', 'a') as log_file:
+        output_path = f'output/subtitles/{video_id}_logs.txt'
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, 'a') as log_file:
             log_file.write(message)
 
 
