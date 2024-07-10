@@ -34,20 +34,19 @@ def save_articles(result, output_path, video_ids):
             file.write(f"{_id}: {result[_id]}\n")
             print(f'Save the article to {output_path}')
 
-def handle_fetch_video_id(args):
-    videos_info = fetch_youtube_playlist(args.channel_url)
+def handle_fetch_video_id(args, mode):
+    videos_info = fetch_youtube_playlist(args.channel_url, mode)
     db = OperateDB()
     existing_ids = db.fetch_existing_ids()
     new_videos, existing_videos = classify_videos(videos_info, existing_ids)
-
     print("New video data:")
     for video in new_videos:
         print(f"ID: {video['id']}, Author: {video['playlist_uploader_id']}, Title: {video.get('title', 'No Title')}")
-    print("Existing video data:")
-    for video in existing_videos:
-        print(f"ID: {video['id']}, Author: {video['playlist_uploader_id']}, Title: {video.get('title', 'No Title')}")
+    # print("Existing video data:")
+    # for video in existing_videos:
+    #    print(f"ID: {video['id']}, Author: {video['playlist_uploader_id']}, Title: {video.get('title', 'No Title')}")
 
-    db.save_new_yt_info(new_videos)
+    db.save_new_yt_info(new_videos, mode)
     db.close()
 
 
@@ -75,11 +74,12 @@ def main():
     args = parser.parse_args()
 
     if args.mode == "fetch_video_id":
-        handle_fetch_video_id(args)
+        handle_fetch_video_id(args, 'playlist')
         
     if args.mode == "download_subtitle":
         db = OperateDB()
         if args.download_mode == 'video_id':
+            handle_fetch_video_id(args, 'single_video')
             handle_download_subtitle(args, args.video_id)
         if args.download_mode == 'playlist':
             video_ids = db.get_video_ids(conditions={'has_subtitles': 'Done', 'has_address_subtitles': 'No'})

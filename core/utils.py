@@ -7,14 +7,39 @@ from openai import OpenAI
 import re, os
 
 
-def fetch_youtube_playlist(playlist_url: str) -> List[Dict[str, Any]]:
-    command = [
-        'yt-dlp',
-        '-o', '%(title)s.%(ext)s',
-        '--flat-playlist',
-        '--dump-json',
-        playlist_url
-    ]
+def fetch_youtube_playlist(url: str, mode = 'playlist') -> List[Dict[str, Any]]:
+    '''
+    When mode == single_video, the url could give video url or video id
+        ex: video url : https://www.youtube.com/watch?v=g0RWoZnOANM
+            video id  : g0RWoZnOANM
+    When mode == playlist, the url could give channel url id or user id
+        ex: channel  url: https://www.youtube.com/@benhsu501  or https://www.youtube.com/channel/UCUF0L0t3Q5wAf3Sd95OqkMA
+            channel  id : @benhsu501
+            playlist url: https://www.youtube.com/watch?v=sUVX2NqOOEg&list=PL4l6DarLyO5dMGVxdIeTWsYvYxXppRNRt
+        
+    '''
+    if 'youtube' not in url: 
+        if mode == 'single_video':
+            url = 'www.youtube.com/watch?v=' + url
+        if mode == 'playlist':
+            usr = 'https://www.youtube.com/' + url
+
+    if mode == 'playlist':
+        command = [
+            'yt-dlp',
+            '-o', '%(title)s.%(ext)s',
+            '--flat-playlist',
+            '--dump-json',
+            url
+        ]
+    elif mode == 'single_video':
+        command = [
+            'yt-dlp',
+            '-o', '%(title)s.%(ext)s',
+            '--flat-playlist',
+            '--dump-json',
+            url
+        ] 
     
     result = subprocess.run(command, stdout=subprocess.PIPE, text=True)
     videos_info = []
@@ -44,7 +69,7 @@ class OperateDB:
                 raise
         return existing_ids
     
-    def save_new_yt_info(self, videos_info):
+    def save_new_yt_info(self, videos_info, mode):
         c = self.cursor
 
         c.execute('''
@@ -71,8 +96,37 @@ class OperateDB:
             has_uploaded_article TEXT DEFAULT 'No'
         );
         ''')
-
-        for video in videos_info:
+        if mode == 'playlist':
+            for video in videos_info:
+                c.execute('''
+                INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
+                                    playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
+                                    has_subtitles, has_address_subtitles, has_generated_article, has_uploaded_article)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    video['id'],
+                    video.get('title', ''),
+                    video.get('url', ''),
+                    video.get('description', ''),
+                    video.get('duration', None),
+                    video.get('view_count', None),
+                    video.get('webpage_url', ''),
+                    video.get('webpage_url_domain', ''),
+                    video.get('extractor', ''),
+                    video.get('playlist_title', ''), # 1
+                    video.get('playlist_id', ''),    # 1
+                    video.get('playlist_uploader', ''), # 1
+                    video.get('playlist_uploader_id', ''), # 1
+                    video.get('n_entries', None),   #1
+                    video.get('duration_string', ''),
+                    video.get('upload_date', ''),  # 確保有上传日期
+                    'No',  # has_subtitles
+                    'No',
+                    'No',  # has_generated_article
+                    'No'   # has_uploaded_article
+                ))
+        elif mode == 'singlie_video':
+            video = videos_info[0]
             c.execute('''
             INSERT OR REPLACE INTO videos (id, title, url, description, duration, view_count, webpage_url, webpage_url_domain, extractor,
                                 playlist_title, playlist_id, playlist_uploader, playlist_uploader_id, n_entries, duration_string, upload_date,
@@ -88,10 +142,10 @@ class OperateDB:
                 video.get('webpage_url', ''),
                 video.get('webpage_url_domain', ''),
                 video.get('extractor', ''),
-                video.get('playlist_title', ''),
-                video.get('playlist_id', ''),
-                video.get('playlist_uploader', ''),
-                video.get('playlist_uploader_id', ''),
+                'No',
+                video.get('channel_id', ''),
+                video.get('channel', ''),
+                video.get('uploader_id', ''),
                 video.get('n_entries', None),
                 video.get('duration_string', ''),
                 video.get('upload_date', ''),  # 確保有上传日期
