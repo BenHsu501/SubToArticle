@@ -66,6 +66,7 @@ python main.py --video_id <VIDEO_ID>
     ```sh
     python main.py --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
     ```
-generate_article: 生成文章
-python main.py --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
-
+    * generate_article: 生成文章
+    ```sh
+    python main.py --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
+    ```

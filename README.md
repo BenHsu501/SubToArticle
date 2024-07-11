@@ -71,5 +71,7 @@ python main.py --download_mode playlist --channel_url @BenHsu501
 python main.py --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
 ```
 * **generate_article**: Generates an article.
+```
 python main.py --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
+```
 
