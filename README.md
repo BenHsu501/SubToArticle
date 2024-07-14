@@ -63,15 +63,16 @@ python main.py --video_id <VIDEO_ID> --subtitle_source subtitle
 * **full_process (default)**: Executes the entire process including fetching video information, downloading subtitles, and generating articles.
 * **fetch_video_id**: Fetches video IDs, used for batch downloading information.
 ```sh
-python main.py --download_mode playlist --channel_url @BenHsu501
+python main.py --mode fetch_video_id --download_mode playlist --channel_url @BenHsu501
 ```
 * **download_subtitle**: Downloads subtitles. If using --download_mode playlist, it is recommended to use --subtitle_source subtitle to avoid long Whisper processing times.
 
 ```sh
-python main.py --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
+python main.py --mode download_subtitle --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
 ```
+
 * **generate_article**: Generates an article.
-```
-python main.py --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
+```sh
+python main.py --mode generate_article --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
 ```
 
