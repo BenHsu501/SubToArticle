@@ -60,13 +60,13 @@ python main.py --video_id <VIDEO_ID>
     * full_process(default): 執行提取影片資訊、下載字幕、生成文章
     * fetch_video_id: 抓取 video id，批次下載資訊時使用
     ```sh
-    python main.py --download_mode playlist --channel_url @BenHsu501
+    python main.py --mode fetch_video_id --download_mode playlist --channel_url @BenHsu501
     ```
     * download_subtitle: 下載字幕使用，如果用於 `--download_mode playlist` 建議 `--subtitle_source subtitle`，否則whisper 辨識時間可能過長
     ```sh
-    python main.py --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
+    python main.py --mode download_subtitle --download_mode playlist `--subtitle_source subtitle --channel_url @BenHsu501
     ```
     * generate_article: 生成文章
     ```sh
-    python main.py --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
+    python main.py --mode generate_article --download_mode video_id --video_id <VIDEO_ID> --model gpt-4o
     ```
